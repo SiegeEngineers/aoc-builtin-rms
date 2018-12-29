@@ -41,3 +41,7 @@ Optionally, `description` can refer to a string ID that will be shown when hover
 ```xml
 <map id="-10" name="Valley" drsId="54260" description="30155" />
 ```
+
+## License
+
+[GPL-3.0](./LICENSE.md)
