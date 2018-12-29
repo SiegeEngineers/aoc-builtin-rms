@@ -1,4 +1,4 @@
-# aoe2-builtin-rms
+# aoc-builtin-rms
 
 A little mod for adding new "builtin"-like RMS scripts to Age of Empires 2: The Conquerors, with UserPatch.
 

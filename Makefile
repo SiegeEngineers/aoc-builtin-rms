@@ -18,12 +18,12 @@ endif
 SOURCES = $(shell echo *.c)
 OBJECTS = $(SOURCES:.c=.o)
 
-all: aoe2-builtin-rms.dll
+all: aoc-builtin-rms.dll
 
 clean:
 	rm -f $(OBJECTS)
 
 .PHONY: all clean
 
-aoe2-builtin-rms.dll: dll.c
+aoc-builtin-rms.dll: aoc-builtin-rms.c
 	$(CC) -o $@ $(FLAGS) -shared $< $(LDFLAGS)
