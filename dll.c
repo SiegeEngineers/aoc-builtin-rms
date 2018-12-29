@@ -9,6 +9,12 @@ struct CustomMap {
   char id;
   /* Visible name of the map */
   char* name;
+  /* Hover description of the map */
+  char* description;
+  /* Constant name for this map for use in AI rules */
+  char* ai_const_name;
+  /* Symbol name for this map for use in AI preprocessing statements */
+  char* ai_symbol_name;
   /* DRS ID of the map */
   int drs_id;
   /* Kind of map (standard/real world) */
@@ -18,9 +24,21 @@ struct CustomMap {
 };
 
 struct CustomMap custom_maps[] = {
-  { .id = -1, .name = "Hideout", .drs_id = 54208, .type = RMS_STANDARD },
-  { .id = -2, .name = "Budapest", .drs_id = 54208, .type = RMS_REALWORLD },
-  { .id = 0 }
+  { .id = -1,
+    .name = "Cool Custom Map",
+    .description = "A map I made for this occasion!",
+    .ai_const_name = "cool-custom",
+    .ai_symbol_name = "COOL-CUSTOM-MAP",
+    .drs_id = 54208,
+    .type = RMS_STANDARD },
+  { .id = -2,
+    .name = "Budapest",
+    .description = "",
+    .ai_const_name = "real-world-budapest",
+    .ai_symbol_name = "REAL-WORLD-BUDAPEST-MAP",
+    .drs_id = 54208,
+    .type = RMS_REALWORLD },
+  { 0 }
 };
 
 /* offsets for finding data */
@@ -41,10 +59,20 @@ typedef int __thiscall (*fn_dropdown_add_line)(void*, int, int);
 typedef int __thiscall (*fn_text_add_line)(void*, int, int);
 typedef int __thiscall (*fn_dropdown_add_string)(void*, char*, int);
 
+/* offsets for defining the AI constants */
+const size_t offs_ai_define_symbol = 0x5F74F0;
+const size_t offs_ai_define_const = 0x5F7530;
+const size_t offs_ai_define_map_symbol = 0x4A27F7;
+const size_t offs_ai_define_map_const = 0x4A4470;
+typedef int __thiscall (*fn_ai_define_symbol)(void*, char*);
+typedef int __thiscall (*fn_ai_define_const)(void*, char*, int);
+
 static fn_rms_controller_constructor aoc_rms_controller_constructor = 0;
 static fn_dropdown_add_line aoc_dropdown_add_line = 0;
 static fn_text_add_line aoc_text_add_line = 0;
 static fn_dropdown_add_string aoc_dropdown_add_string = 0;
+static fn_ai_define_symbol aoc_ai_define_symbol = 0;
+static fn_ai_define_const aoc_ai_define_const = 0;
 
 int get_map_type() {
   int base_offset = *(int*)offs_game_instance;
@@ -100,6 +128,30 @@ void* __thiscall rms_controller_hook(void* controller, char* filename, int drs_i
   }
   aoc_rms_controller_constructor(controller, filename, drs_id);
   return controller;
+}
+
+int __thiscall ai_define_map_symbol_hook(void* ai, char* name) {
+  if (strcmp(name, "SCENARIO-MAP") == 0) {
+    int map_type = get_map_type();
+    for (int i = 0; custom_maps[i].id; i++) {
+      if (custom_maps[i].id == map_type) {
+        name = custom_maps[i].ai_symbol_name;
+        printf("[aoe2-builtin-rms] defining ai symbol: %s\n", name);
+        break;
+      }
+    }
+  }
+  return aoc_ai_define_symbol(ai, name);
+}
+
+int __thiscall ai_define_map_const_hook(void* ai, char* name, int value) {
+  for (int i = 0; custom_maps[i].id; i++) {
+    printf("[aoe2-builtin-rms] defining ai const: %s = %d\n", custom_maps[i].ai_const_name, custom_maps[i].id);
+    aoc_ai_define_const(ai,
+        custom_maps[i].ai_const_name,
+        custom_maps[i].id);
+  }
+  return aoc_ai_define_const(ai, "scenario-map", -1);
 }
 
 char* get_error_message(HRESULT hr) {
@@ -171,6 +223,12 @@ void init() {
   /* Stuff to resolve the custom map ID to a DRS file */
   aoc_rms_controller_constructor = (fn_rms_controller_constructor) offs_rms_controller_constructor;
   install_callhook((void*)offs_rms_controller, rms_controller_hook);
+
+  /* Stuff to add AI constants */
+  aoc_ai_define_symbol = (fn_ai_define_symbol) offs_ai_define_symbol;
+  aoc_ai_define_const = (fn_ai_define_const) offs_ai_define_const;
+  install_callhook((void*)offs_ai_define_map_symbol, ai_define_map_symbol_hook);
+  install_callhook((void*)offs_ai_define_map_const, ai_define_map_const_hook);
 }
 
 void deinit() {
