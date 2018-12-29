@@ -10,7 +10,7 @@ struct CustomMap {
   /* Visible name of the map */
   char* name;
   /* Hover description of the map */
-  char* description;
+  int description;
   /* Constant name for this map for use in AI rules */
   char* ai_const_name;
   /* Symbol name for this map for use in AI preprocessing statements */
@@ -81,7 +81,7 @@ int parse_map(char type, char** read_ptr_out) {
   struct CustomMap map = {
     .id = 0,
     .name = "",
-    .description = "",
+    .description = -1,
     .ai_const_name = "",
     .ai_symbol_name = "",
     .type = type,
