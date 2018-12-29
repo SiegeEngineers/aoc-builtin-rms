@@ -23,27 +23,18 @@ struct CustomMap {
   int scx_drs_id;
 };
 
-struct CustomMap custom_maps[] = {
-  { .id = -1,
-    .name = "Cool Custom Map",
-    .description = "A map I made for this occasion!",
-    .ai_const_name = "cool-custom",
-    .ai_symbol_name = "COOL-CUSTOM-MAP",
-    .drs_id = 54208,
-    .type = RMS_STANDARD },
-  { .id = -2,
-    .name = "Budapest",
-    .description = "",
-    .ai_const_name = "real-world-budapest",
-    .ai_symbol_name = "REAL-WORLD-BUDAPEST-MAP",
-    .drs_id = 54208,
-    .type = RMS_REALWORLD },
+/**
+ * Store custom builtin maps.
+ * 100 is a random maximum number I picked that seems high enough for most mods.
+ */
+struct CustomMap custom_maps[100] = {
   { 0 }
 };
 
 /* offsets for finding data */
 const size_t offs_game_instance = 0x7912A0;
 const size_t offs_map_type = 0x13DC;
+const size_t offs_game_xml = 0x7A5070;
 
 /* offsets for hooking the random map file reading/parsing */
 const size_t offs_rms_controller = 0x45F717;
@@ -73,6 +64,90 @@ static fn_text_add_line aoc_text_add_line = 0;
 static fn_dropdown_add_string aoc_dropdown_add_string = 0;
 static fn_ai_define_symbol aoc_ai_define_symbol = 0;
 static fn_ai_define_const aoc_ai_define_const = 0;
+
+/**
+ * Count the number of custom maps.
+ */
+size_t count_custom_maps() {
+  size_t i = 0;
+  for (; custom_maps[i].id; i++) {}
+  return i;
+}
+
+#define ERR_NO_ID 1
+#define ERR_NO_NAME 2
+#define ERR_NO_DRS_ID 3
+int parse_map(char type, char** read_ptr_out) {
+  struct CustomMap map = {
+    .id = 0,
+    .name = "",
+    .description = "",
+    .ai_const_name = "",
+    .ai_symbol_name = "",
+    .type = type,
+    .scx_drs_id = 0
+  };
+
+  char* read_ptr = *read_ptr_out;
+  char* end_ptr = strstr(read_ptr, "/>");
+  *read_ptr_out = end_ptr + 2;
+
+  char* id_ptr = strstr(read_ptr, "id=\"");
+  if (id_ptr == NULL || id_ptr > end_ptr) { return ERR_NO_ID; }
+  int map_id = 0;
+  sscanf(id_ptr, "id=\"%d\"", &map_id);
+  map.id = (char)map_id;
+
+  char* name_ptr = strstr(read_ptr, "name=\"");
+  if (name_ptr == NULL || name_ptr > end_ptr) { return ERR_NO_NAME; }
+  char name[80];
+  sscanf(name_ptr, "name=\"%79s\"", name);
+  if (strlen(name) < 1) { return ERR_NO_NAME; }
+  name[strlen(name) - 1] = '\0'; // chop off the "
+  map.name = calloc(1, strlen(name) + 1);
+  strcpy(map.name, name);
+
+  char* drs_id_ptr = strstr(read_ptr, "drsId=\"");
+  if (drs_id_ptr == NULL || drs_id_ptr > end_ptr) { return ERR_NO_DRS_ID; }
+  sscanf(drs_id_ptr, "drsId=\"%d\"", &map.drs_id);
+
+  // Derive ai const name: lowercase name
+  char const_name[80];
+  int const_len = sprintf(const_name, "%s", name);
+  CharLowerBuffA(const_name, const_len);
+  map.ai_const_name = calloc(1, const_len + 1);
+  strcpy(map.ai_const_name, const_name);
+
+  // Derive ai symbol name: uppercase name suffixed with -MAP,
+  // with REAL-WORLD- prefix for real world maps
+  char symbol_name[100];
+  int symbol_len = sprintf(symbol_name, type == RMS_REALWORLD ? "REAL-WORLD-%s-MAP" : "%s-MAP", name);
+  CharUpperBuffA(symbol_name, symbol_len);
+  map.ai_symbol_name = calloc(1, symbol_len + 1);
+  strcpy(map.ai_symbol_name, symbol_name);
+
+  printf("[aoe2-builtin-rms] Add modded map: %s\n", map.name);
+  size_t i = count_custom_maps();
+  custom_maps[i] = map;
+  custom_maps[i + 1] = (struct CustomMap) {0};
+
+  *read_ptr_out = end_ptr + 2;
+  return 0;
+}
+
+void parse_maps() {
+  char* mod_config = *(char**)offs_game_xml;
+  char* read_ptr = strstr(mod_config, "<random-maps>");
+  char* end_ptr = strstr(read_ptr, "</random-maps>");
+  printf("[aoe2-builtin-rms] range: %p %p\n", read_ptr, end_ptr);
+
+  if (read_ptr == NULL || end_ptr == NULL) return;
+
+  while ((read_ptr = strstr(read_ptr, "<map")) && read_ptr < end_ptr) {
+    // todo check for real world maps
+    parse_map(RMS_STANDARD, &read_ptr);
+  }
+}
 
 int get_map_type() {
   int base_offset = *(int*)offs_game_instance;
@@ -214,6 +289,13 @@ void install_callhook (void* orig_address, void* hook_address) {
 
 void init() {
   printf("[aoe2-builtin-rms] init()\n");
+  parse_maps();
+
+  if (count_custom_maps() == 0) {
+    printf("[aoe2-builtin-rms] no custom maps specified, stopping\n");
+    return;
+  }
+
   /* Stuff to display custom maps in the dropdown menus */
   aoc_dropdown_add_line = (fn_dropdown_add_line) offs_dropdown_add_line;
   aoc_dropdown_add_string = (fn_dropdown_add_string) offs_dropdown_add_string;
