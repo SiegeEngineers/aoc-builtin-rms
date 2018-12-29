@@ -39,5 +39,5 @@ The `drsId` is the `bina` resource ID that contains the map script.
 
 Optionally, `description` can refer to a string ID that will be shown when hovering the map name in the game setup screen. This string must be present in a `language_x1_p1.dll` file with your mod.
 ```xml
-<map ... description="30155" />
+<map id="-10" name="Valley" drsId="54260" description="30155" />
 ```

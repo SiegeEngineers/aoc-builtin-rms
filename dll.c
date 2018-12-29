@@ -32,23 +32,39 @@ struct CustomMap custom_maps[100] = {
 };
 
 /* offsets for finding data */
+
+/* location of the main game instance object */
 const size_t offs_game_instance = 0x7912A0;
+/* offset of the map type attribute in the game_instance struct */
 const size_t offs_map_type = 0x13DC;
+/* location of the XML source for the active UP mod */
 const size_t offs_game_xml = 0x7A5070;
 
 /* offsets for hooking the random map file reading/parsing */
+
+/* location of the controller call site that has correct filename,drs_id parameters */
 const size_t offs_rms_controller = 0x45F717;
+/* location of the controller constructor */
 const size_t offs_rms_controller_constructor = 0x534C40;
 typedef void* __thiscall (*fn_rms_load_scx)(void*, char*, int, void*);
 typedef void* __thiscall (*fn_rms_controller_constructor)(void*, char*, int);
 
 /* offsets for hooking the builtin random map file list */
+
 const size_t offs_dropdown_add_line = 0x550870;
 const size_t offs_text_add_line = 0x5473F0;
 const size_t offs_dropdown_add_string = 0x550840;
+/* location of fn that gets the ID value of a text panel row */
+const size_t offs_text_get_value = 0x5479D0;
+/* location of fn that sets the hover description for a text panel row */
+const size_t offs_text_set_rollover_id = 0x547C20;
+/* location of the call to text_get_value that happens when applying rollover description IDs */
+const size_t offs_text_get_map_value = 0x5086E1;
 typedef int __thiscall (*fn_dropdown_add_line)(void*, int, int);
 typedef int __thiscall (*fn_text_add_line)(void*, int, int);
 typedef int __thiscall (*fn_dropdown_add_string)(void*, char*, int);
+typedef int __thiscall (*fn_text_get_value)(void*, int);
+typedef int __thiscall (*fn_text_set_rollover_id)(void*, int, int);
 
 /* offsets for defining the AI constants */
 const size_t offs_ai_define_symbol = 0x5F74F0;
@@ -62,6 +78,8 @@ static fn_rms_controller_constructor aoc_rms_controller_constructor = 0;
 static fn_dropdown_add_line aoc_dropdown_add_line = 0;
 static fn_text_add_line aoc_text_add_line = 0;
 static fn_dropdown_add_string aoc_dropdown_add_string = 0;
+static fn_text_get_value aoc_text_get_value = 0;
+static fn_text_set_rollover_id aoc_text_set_rollover_id = 0;
 static fn_ai_define_symbol aoc_ai_define_symbol = 0;
 static fn_ai_define_const aoc_ai_define_const = 0;
 
@@ -111,6 +129,11 @@ int parse_map(char type, char** read_ptr_out) {
   if (drs_id_ptr == NULL || drs_id_ptr > end_ptr) { return ERR_NO_DRS_ID; }
   sscanf(drs_id_ptr, "drsId=\"%d\"", &map.drs_id);
 
+  char* description_ptr = strstr(read_ptr, "description=\"");
+  if (description_ptr != NULL && description_ptr < end_ptr) {
+    sscanf(description_ptr, "description=\"%d\"", &map.description);
+  }
+
   // Derive ai const name: lowercase name
   char const_name[80];
   int const_len = sprintf(const_name, "%s", name);
@@ -135,6 +158,9 @@ int parse_map(char type, char** read_ptr_out) {
   return 0;
 }
 
+/**
+ * Parse a <random-maps> section from a UserPatch mod description file.
+ */
 void parse_maps() {
   char* mod_config = *(char**)offs_game_xml;
   char* read_ptr = strstr(mod_config, "<random-maps>");
@@ -185,6 +211,20 @@ void __thiscall dropdown_add_line_hook(void* dd, int label, int value) {
           custom_maps[i].id);
     }
   }
+}
+
+int __thiscall text_get_map_value_hook(void* tt, int line_index) {
+  int selected_map_id = aoc_text_get_value(tt, line_index);
+
+  for (int i = 0; custom_maps[i].id; i++) {
+    if (custom_maps[i].id != selected_map_id) continue;
+    if (custom_maps[i].description != -1) {
+      aoc_text_set_rollover_id(tt, line_index, custom_maps[i].description);
+      return 0; /* doesn't have a hardcoded ID so we won't call set_rollover_id twice */
+    }
+  }
+
+  return selected_map_id;
 }
 
 static char map_filename_str[MAX_PATH];
@@ -300,7 +340,10 @@ void init() {
   aoc_dropdown_add_line = (fn_dropdown_add_line) offs_dropdown_add_line;
   aoc_dropdown_add_string = (fn_dropdown_add_string) offs_dropdown_add_string;
   aoc_text_add_line = (fn_text_add_line) offs_text_add_line;
+  aoc_text_get_value = (fn_text_get_value) offs_text_get_value;
+  aoc_text_set_rollover_id = (fn_text_set_rollover_id) offs_text_set_rollover_id;
   install_jmphook((void*)offs_dropdown_add_line, dropdown_add_line_hook);
+  install_callhook((void*)offs_text_get_map_value, text_get_map_value_hook);
 
   /* Stuff to resolve the custom map ID to a DRS file */
   aoc_rms_controller_constructor = (fn_rms_controller_constructor) offs_rms_controller_constructor;
