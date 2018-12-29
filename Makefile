@@ -3,14 +3,13 @@
 
 CC = i686-w64-mingw32-gcc
 
-CFLAGS = -Wall
+CFLAGS = -Wall -m32
 LDFLAGS = 
 
-OPTFLAGS = -O3 -s
+OPTFLAGS = -O3
 DBGFLAGS = -DDEBUG -g
 
 SOURCES = $(shell echo *.c)
-HEADERS = $(shell echo *.h)
 OBJECTS = $(SOURCES:.c=.o)
 
 all: aoe2-builtin-rms.dll
@@ -20,8 +19,8 @@ clean:
 
 .PHONY: all clean
 
-%.o: %.c $(HEADERS)
-	$(CC) -c -Wall -g -I./include $< -o $@
+dll.o: dll.c
+	$(CC) -c $(CFLAGS) $(OPTFLAGS) $(DBGFLAGS) $< -o $@
 
 aoe2-builtin-rms.dll: $(OBJECTS)
-	$(CC) -o $@ $(CFLAGS) $(DBGFLAGS) -shared $(OBJECTS) $(LDFLAGS)
+	$(CC) -o $@ $(CFLAGS) $(OPTFLAGS) $(DBGFLAGS) -shared $(OBJECTS) $(LDFLAGS)
