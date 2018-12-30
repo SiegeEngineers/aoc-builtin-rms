@@ -7,8 +7,10 @@
 struct CustomMap {
   /* Internal ID of the map */
   char id;
-  /* Visible name of the map */
+  /* Internal name of the map */
   char* name;
+  /* String ID containing the localised name of the map. */
+  int string;
   /* Hover description of the map */
   int description;
   /* Constant name for this map for use in AI rules */
@@ -94,11 +96,13 @@ size_t count_custom_maps() {
 
 #define ERR_NO_ID 1
 #define ERR_NO_NAME 2
+#define ERR_NO_STRING_ID 4
 #define ERR_NO_DRS_ID 3
 int parse_map(char type, char** read_ptr_out) {
   struct CustomMap map = {
     .id = 0,
     .name = "",
+    .string = -1,
     .description = -1,
     .ai_const_name = "",
     .ai_symbol_name = "",
@@ -124,6 +128,10 @@ int parse_map(char type, char** read_ptr_out) {
   name[strlen(name) - 1] = '\0'; // chop off the "
   map.name = calloc(1, strlen(name) + 1);
   strcpy(map.name, name);
+
+  char* string_ptr = strstr(read_ptr, "string=\"");
+  if (string_ptr == NULL || string_ptr > end_ptr) { return ERR_NO_STRING_ID; }
+  sscanf(string_ptr, "string=\"%d\"", &map.string);
 
   char* drs_id_ptr = strstr(read_ptr, "drsId=\"");
   if (drs_id_ptr == NULL || drs_id_ptr > end_ptr) { return ERR_NO_DRS_ID; }
@@ -192,10 +200,14 @@ char is_last_real_world_dropdown_entry(int label, int value) {
 void __thiscall dropdown_add_line_hook(void* dd, int label, int value) {
   int dd_offset = (int)dd;
   void* text_panel = *(void**)(dd_offset + 256);
-  printf("[aoe2-builtin-rms] called hooked dropdown_add_line %p %p, %d %d!\n", dd, text_panel, label, value);
-  if (text_panel != NULL) {
-    aoc_text_add_line(text_panel, label, value);
+  if (text_panel == NULL) {
+    return;
   }
+
+  printf("[aoe2-builtin-rms] called hooked dropdown_add_line %p %p, %d %d!\n", dd, text_panel, label, value);
+
+  // Original
+  aoc_text_add_line(text_panel, label, value);
 
   int additional_type = -1;
   if (is_last_map_dropdown_entry(label, value))
@@ -206,8 +218,8 @@ void __thiscall dropdown_add_line_hook(void* dd, int label, int value) {
   if (additional_type != -1) {
     for (int i = 0; custom_maps[i].id; i++) {
       if (custom_maps[i].type != additional_type) continue;
-      aoc_dropdown_add_string(dd,
-          custom_maps[i].name,
+      aoc_text_add_line(text_panel,
+          custom_maps[i].string,
           custom_maps[i].id);
     }
   }

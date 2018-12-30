@@ -24,22 +24,24 @@ This dll looks for a `<random-maps>` section in your mod's XML file, the same th
     ...
   </civilizations>
   <random-maps>
-    <map id="-1" name="Cenotes" drsId="54250" />
+    <map id="-1" name="cenotes" string="10916" drsId="54250" />
   </random-maps>
 </configuration>
 ```
 
-Each map has an `id`, a `name`, a `drsId`.
+Each map must have an `id`, a `name`, `string`, and a `drsId`.
 
 The `id` will be used internally by the game to refer to the map. It should never change. Some IDs (0-50 more or less) are already in use by the game for the standard builtin maps. I recommend using small negative numbers to reduce the risk of clashes.
 
-The `name` determines how the map name is displayed and what the RMS and AI constants are named. For example, `name="Cenotes"` allows using the `(map-type cenotes)` fact and doing `#load-if-defined CENOTES-MAP` in AIs.
+The `name` determines what the RMS and AI constants for this map are named. For example, `name="cenotes"` allows using the `(map-type cenotes)` fact and doing `#load-if-defined CENOTES-MAP` in AIs. Do **not** use spaces here, instead separate words with dashes, eg `name="city-of-lakes"`.
+
+The `string` is the string ID containing the localised map name, as shown in the random map selection dropdown menu. This string must be present in a `language_x1_p1.dll` file with your mod.
 
 The `drsId` is the `bina` resource ID that contains the map script.
 
 Optionally, `description` can refer to a string ID that will be shown when hovering the map name in the game setup screen. This string must be present in a `language_x1_p1.dll` file with your mod.
 ```xml
-<map id="-10" name="Valley" drsId="54260" description="30155" />
+<map id="-10" name="valley" drsId="54260" string="10923" description="30155" />
 ```
 
 ## License
