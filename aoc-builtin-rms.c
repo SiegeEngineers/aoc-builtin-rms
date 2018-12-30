@@ -39,6 +39,8 @@ struct CustomMap custom_maps[100] = {
 const size_t offs_game_instance = 0x7912A0;
 /* offset of the map type attribute in the game_instance struct */
 const size_t offs_map_type = 0x13DC;
+/* offset of the world instance pointer in the game_instance struct */
+const size_t offs_world = 0x424;
 /* location of the XML source for the active UP mod */
 const size_t offs_game_xml = 0x7A5070;
 
@@ -76,6 +78,13 @@ const size_t offs_ai_define_map_const = 0x4A4470;
 typedef int __thiscall (*fn_ai_define_symbol)(void*, char*);
 typedef int __thiscall (*fn_ai_define_const)(void*, char*, int);
 
+/* offsets for real world map hooks */
+const size_t offs_vtbl_map_generate = 0x638114;
+const size_t offs_map_generate = 0x45EE10;
+const size_t offs_load_scx = 0x40DF00;
+typedef int __thiscall (*fn_map_generate)(void*, int, int, char*, void*, int);
+typedef int __thiscall (*fn_load_scx)(void*, char*, int, void*);
+
 static fn_rms_controller_constructor aoc_rms_controller_constructor = 0;
 static fn_dropdown_add_line aoc_dropdown_add_line = 0;
 static fn_text_add_line aoc_text_add_line = 0;
@@ -84,6 +93,8 @@ static fn_text_get_value aoc_text_get_value = 0;
 static fn_text_set_rollover_id aoc_text_set_rollover_id = 0;
 static fn_ai_define_symbol aoc_ai_define_symbol = 0;
 static fn_ai_define_const aoc_ai_define_const = 0;
+static fn_map_generate aoc_map_generate = 0;
+static fn_load_scx aoc_load_scx = 0;
 
 /**
  * Count the number of custom maps.
@@ -98,21 +109,27 @@ size_t count_custom_maps() {
 #define ERR_NO_NAME 2
 #define ERR_NO_STRING_ID 4
 #define ERR_NO_DRS_ID 3
-int parse_map(char type, char** read_ptr_out) {
+
+/**
+ * Parse a <map /> XML element from the string pointed to by `read_ptr_ptr`.
+ * The pointer in `read_ptr_ptr` will point past the end of the <map/> element
+ * after this function.
+ */
+int parse_map(char** read_ptr_ptr) {
   struct CustomMap map = {
     .id = 0,
-    .name = "",
+    .name = NULL,
     .string = -1,
     .description = -1,
-    .ai_const_name = "",
-    .ai_symbol_name = "",
-    .type = type,
-    .scx_drs_id = 0
+    .ai_const_name = NULL,
+    .ai_symbol_name = NULL,
+    .type = RMS_STANDARD,
+    .scx_drs_id = -1
   };
 
-  char* read_ptr = *read_ptr_out;
+  char* read_ptr = *read_ptr_ptr;
   char* end_ptr = strstr(read_ptr, "/>");
-  *read_ptr_out = end_ptr + 2;
+  *read_ptr_ptr = end_ptr + 2;
 
   char* id_ptr = strstr(read_ptr, "id=\"");
   if (id_ptr == NULL || id_ptr > end_ptr) { return ERR_NO_ID; }
@@ -137,6 +154,15 @@ int parse_map(char type, char** read_ptr_out) {
   if (drs_id_ptr == NULL || drs_id_ptr > end_ptr) { return ERR_NO_DRS_ID; }
   sscanf(drs_id_ptr, "drsId=\"%d\"", &map.drs_id);
 
+  char* scx_drs_id_ptr = strstr(read_ptr, "scxDrsId=\"");
+  if (scx_drs_id_ptr != NULL && scx_drs_id_ptr < end_ptr) {
+    sscanf(scx_drs_id_ptr, "scxDrsId=\"%d\"", &map.scx_drs_id);
+  }
+
+  if (map.scx_drs_id > 0) {
+    map.type = RMS_REALWORLD;
+  }
+
   char* description_ptr = strstr(read_ptr, "description=\"");
   if (description_ptr != NULL && description_ptr < end_ptr) {
     sscanf(description_ptr, "description=\"%d\"", &map.description);
@@ -152,7 +178,7 @@ int parse_map(char type, char** read_ptr_out) {
   // Derive ai symbol name: uppercase name suffixed with -MAP,
   // with REAL-WORLD- prefix for real world maps
   char symbol_name[100];
-  int symbol_len = sprintf(symbol_name, type == RMS_REALWORLD ? "REAL-WORLD-%s-MAP" : "%s-MAP", name);
+  int symbol_len = sprintf(symbol_name, map.type == RMS_REALWORLD ? "REAL-WORLD-%s-MAP" : "%s-MAP", name);
   CharUpperBuffA(symbol_name, symbol_len);
   map.ai_symbol_name = calloc(1, symbol_len + 1);
   strcpy(map.ai_symbol_name, symbol_name);
@@ -162,7 +188,7 @@ int parse_map(char type, char** read_ptr_out) {
   custom_maps[i] = map;
   custom_maps[i + 1] = (struct CustomMap) {0};
 
-  *read_ptr_out = end_ptr + 2;
+  *read_ptr_ptr = end_ptr + 2;
   return 0;
 }
 
@@ -178,8 +204,14 @@ void parse_maps() {
   if (read_ptr == NULL || end_ptr == NULL) return;
 
   while ((read_ptr = strstr(read_ptr, "<map")) && read_ptr < end_ptr) {
-    // todo check for real world maps
-    parse_map(RMS_STANDARD, &read_ptr);
+    int err = parse_map(&read_ptr);
+    switch (err) {
+      case ERR_NO_ID: MessageBoxA(NULL, "A <map /> is missing an id attribute", NULL, 0); break;
+      case ERR_NO_NAME: MessageBoxA(NULL, "A <map /> is missing a name attribute", NULL, 0); break;
+      case ERR_NO_STRING_ID: MessageBoxA(NULL, "A <map /> is missing a string attribute", NULL, 0); break;
+      case ERR_NO_DRS_ID: MessageBoxA(NULL, "A <map /> is missing a drsId attribute", NULL, 0); break;
+      default: break;
+    }
   }
 }
 
@@ -188,13 +220,16 @@ int get_map_type() {
   return *(int*)(base_offset + offs_map_type);
 }
 
+void* get_world() {
+  int base_offset = *(int*)offs_game_instance;
+  return *(void**)(base_offset + offs_world);
+}
+
 char is_last_map_dropdown_entry(int label, int value) {
-  /* Yucatan */
-  return label == 10894 && value == 27;
+  return label == 10894 && value == 27; /* Yucatan */
 }
 char is_last_real_world_dropdown_entry(int label, int value) {
-  /* Byzantium */
-  return label == 13553 && value == 43;
+  return label == 13553 && value == 43; /* Byzantium */
 }
 
 void __thiscall dropdown_add_line_hook(void* dd, int label, int value) {
@@ -204,16 +239,18 @@ void __thiscall dropdown_add_line_hook(void* dd, int label, int value) {
     return;
   }
 
-  printf("[aoe2-builtin-rms] called hooked dropdown_add_line %p %p, %d %d!\n", dd, text_panel, label, value);
-
-  // Original
-  aoc_text_add_line(text_panel, label, value);
-
   int additional_type = -1;
   if (is_last_map_dropdown_entry(label, value))
     additional_type = RMS_STANDARD;
   if (is_last_real_world_dropdown_entry(label, value))
     additional_type = RMS_REALWORLD;
+
+  if (additional_type !=  -1) {
+    printf("[aoe2-builtin-rms] called hooked dropdown_add_line %p %p, %d %d\n", dd, text_panel, label, value);
+  }
+
+  // Original
+  aoc_text_add_line(text_panel, label, value);
 
   if (additional_type != -1) {
     for (int i = 0; custom_maps[i].id; i++) {
@@ -226,6 +263,7 @@ void __thiscall dropdown_add_line_hook(void* dd, int label, int value) {
 }
 
 int __thiscall text_get_map_value_hook(void* tt, int line_index) {
+  printf("[aoe2-builtin-rms] called hooked text_get_map_value %p %d\n", tt, line_index);
   int selected_map_id = aoc_text_get_value(tt, line_index);
 
   for (int i = 0; custom_maps[i].id; i++) {
@@ -239,9 +277,18 @@ int __thiscall text_get_map_value_hook(void* tt, int line_index) {
   return selected_map_id;
 }
 
+static void* current_game_info;
+void __thiscall map_generate_hook(void* map, int size_x, int size_y, char* name, void* game_info, int num_players) {
+  printf("[aoe2-builtin-rms] called hooked map_generate %s %p\n", name, game_info);
+  /* We need to store this to be able to load the scx file later */
+  current_game_info = game_info;
+  aoc_map_generate(map, size_x, size_y, name, game_info, num_players);
+}
+
 static char map_filename_str[MAX_PATH];
+static char scx_filename_str[MAX_PATH];
 void* __thiscall rms_controller_hook(void* controller, char* filename, int drs_id) {
-  printf("[aoe2-builtin-rms] called hooked rms_controller %s %d!\n", filename, drs_id);
+  printf("[aoe2-builtin-rms] called hooked rms_controller %s %d\n", filename, drs_id);
   int map_type = get_map_type();
   printf("[aoe2-builtin-rms] map type: %d\n", map_type);
   for (int i = 0; custom_maps[i].id; i++) {
@@ -250,11 +297,22 @@ void* __thiscall rms_controller_hook(void* controller, char* filename, int drs_i
       filename = map_filename_str;
       drs_id = custom_maps[i].drs_id;
       printf("[aoe2-builtin-rms] filename/id is now: %s %d\n", filename, drs_id);
+
+      if (custom_maps[i].scx_drs_id > 0) {
+        sprintf(scx_filename_str, "real_world_%s.scx", custom_maps[i].name);
+        printf("[aoe2-builtin-rms] real world map: loading %s %d\n",
+            scx_filename_str, custom_maps[i].scx_drs_id);
+        aoc_load_scx(get_world(),
+            scx_filename_str,
+            custom_maps[i].scx_drs_id,
+            current_game_info);
+      }
+
       break;
     }
   }
-  aoc_rms_controller_constructor(controller, filename, drs_id);
-  return controller;
+
+  return aoc_rms_controller_constructor(controller, filename, drs_id);
 }
 
 int __thiscall ai_define_map_symbol_hook(void* ai, char* name) {
@@ -339,6 +397,17 @@ void install_callhook (void* orig_address, void* hook_address) {
   overwrite_bytes(orig_address, patch, 5);
 }
 
+/**
+ * Install a hook that works by overriding a pointer in a vtable.
+ * Handy for hooking class methods.
+ */
+void install_vtblhook (void* orig_address, void* hook_address) {
+  /* int offset = PtrToUlong(hook_address) - PtrToUlong(orig_address + 5); */
+  int offset = PtrToUlong(hook_address);
+  printf("[aoe2-builtin-rms] installing hook at %p VTBL %x (%p %p)\n", orig_address, offset, hook_address, orig_address);
+  overwrite_bytes(orig_address, (char*)&offset, 4);
+}
+
 void init() {
   printf("[aoe2-builtin-rms] init()\n");
   parse_maps();
@@ -354,22 +423,36 @@ void init() {
   aoc_text_add_line = (fn_text_add_line) offs_text_add_line;
   aoc_text_get_value = (fn_text_get_value) offs_text_get_value;
   aoc_text_set_rollover_id = (fn_text_set_rollover_id) offs_text_set_rollover_id;
-  install_jmphook((void*)offs_dropdown_add_line, dropdown_add_line_hook);
-  install_callhook((void*)offs_text_get_map_value, text_get_map_value_hook);
+  install_jmphook((void*) offs_dropdown_add_line, dropdown_add_line_hook);
+  install_callhook((void*) offs_text_get_map_value, text_get_map_value_hook);
 
   /* Stuff to resolve the custom map ID to a DRS file */
   aoc_rms_controller_constructor = (fn_rms_controller_constructor) offs_rms_controller_constructor;
-  install_callhook((void*)offs_rms_controller, rms_controller_hook);
+  install_callhook((void*) offs_rms_controller, rms_controller_hook);
 
   /* Stuff to add AI constants */
   aoc_ai_define_symbol = (fn_ai_define_symbol) offs_ai_define_symbol;
   aoc_ai_define_const = (fn_ai_define_const) offs_ai_define_const;
-  install_callhook((void*)offs_ai_define_map_symbol, ai_define_map_symbol_hook);
-  install_callhook((void*)offs_ai_define_map_const, ai_define_map_const_hook);
+  install_callhook((void*) offs_ai_define_map_symbol, ai_define_map_symbol_hook);
+  install_callhook((void*) offs_ai_define_map_const, ai_define_map_const_hook);
+
+  /* Stuff to make real world maps work */
+  aoc_map_generate = (fn_map_generate) offs_map_generate;
+  aoc_load_scx = (fn_load_scx) offs_load_scx;
+  install_vtblhook((void*) offs_vtbl_map_generate, map_generate_hook);
 }
 
 void deinit() {
   printf("[aoe2-builtin-rms] deinit()\n");
+  for (size_t i = 0; custom_maps[i].id; i++) {
+    if (custom_maps[i].name != NULL)
+      free(custom_maps[i].name);
+    if (custom_maps[i].ai_const_name != NULL)
+      free(custom_maps[i].ai_const_name);
+    if (custom_maps[i].ai_symbol_name != NULL)
+      free(custom_maps[i].ai_symbol_name);
+    custom_maps[i].id = 0;
+  }
 }
 
 BOOL WINAPI DllMain(HINSTANCE dll, DWORD reason, void* _) {

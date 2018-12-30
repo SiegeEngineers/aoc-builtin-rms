@@ -1,6 +1,3 @@
-# Non windows only!
-# Requires Wine and mingw-w64!
-
 CC = i686-w64-mingw32-gcc
 
 CFLAGS = -Wall -m32

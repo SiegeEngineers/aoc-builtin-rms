@@ -39,6 +39,8 @@ The `string` is the string ID containing the localised map name, as shown in the
 
 The `drsId` is the `bina` resource ID that contains the map script.
 
+Optionally, `scxDrsId` can refer to a `bina` resource ID containing a scenario file for Real World maps. Specifying `scxDrsId` will cause the map to show in the Real World section instead of the RMS section.
+
 Optionally, `description` can refer to a string ID that will be shown when hovering the map name in the game setup screen. This string must be present in a `language_x1_p1.dll` file with your mod.
 ```xml
 <map id="-10" name="valley" drsId="54260" string="10923" description="30155" />
