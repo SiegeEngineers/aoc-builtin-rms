@@ -5,8 +5,9 @@
 #define RMS_REALWORLD 1
 
 struct CustomMap {
-  /* Internal ID of the map */
-  char id;
+  /* Internal ID of the map--stored as an int but many places in game assume it's a single byte
+   * so this should not exceed 255 */
+  int id;
   /* Internal name of the map */
   char* name;
   /* String ID containing the localised name of the map. */
@@ -109,6 +110,7 @@ size_t count_custom_maps() {
 #define ERR_NO_NAME 2
 #define ERR_NO_STRING_ID 4
 #define ERR_NO_DRS_ID 3
+#define ERR_TOO_BIG_ID 5
 
 /**
  * Parse a <map /> XML element from the string pointed to by `read_ptr_ptr`.
@@ -133,9 +135,11 @@ int parse_map(char** read_ptr_ptr) {
 
   char* id_ptr = strstr(read_ptr, "id=\"");
   if (id_ptr == NULL || id_ptr > end_ptr) { return ERR_NO_ID; }
-  int map_id = 0;
-  sscanf(id_ptr, "id=\"%d\"", &map_id);
-  map.id = (char)map_id;
+  sscanf(id_ptr, "id=\"%d\"", &map.id);
+  if (map.id < 0) {
+    map.id = 255 + (char)map.id;
+  }
+  if (map.id > 255) { return ERR_TOO_BIG_ID; }
 
   char* name_ptr = strstr(read_ptr, "name=\"");
   if (name_ptr == NULL || name_ptr > end_ptr) { return ERR_NO_NAME; }
@@ -210,6 +214,7 @@ void parse_maps() {
       case ERR_NO_NAME: MessageBoxA(NULL, "A <map /> is missing a name attribute", NULL, 0); break;
       case ERR_NO_STRING_ID: MessageBoxA(NULL, "A <map /> is missing a string attribute", NULL, 0); break;
       case ERR_NO_DRS_ID: MessageBoxA(NULL, "A <map /> is missing a drsId attribute", NULL, 0); break;
+      case ERR_TOO_BIG_ID: MessageBoxA(NULL, "A <map />'s map ID is too large: must be at most 255", NULL, 0); break;
       default: break;
     }
   }
