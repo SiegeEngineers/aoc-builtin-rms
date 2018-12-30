@@ -4,6 +4,10 @@ A little mod for adding new "builtin"-like RMS scripts to Age of Empires 2: The 
 
 This mod works together with UserPatch 1.5.
 
+|||
+|-|-|
+| ![Custom Standard maps](./screenshot-standard.png) | ![Custom Real World maps](./screenshot-realworld.png) |
+
 ## Usage
 
 Grab `aoc-builtin-rms.dll` from the [releases](https://github.com/SiegeEngineers/aoc-builtin-rms/releases) page. Load this .dll into your AoC process somehow. You can use an exe mod or hijack your `language_x1_p1.dll` for this (put your strings and a `LoadLibrary()` call in it).
