@@ -6,7 +6,7 @@ This mod works together with UserPatch 1.5.
 
 ## Usage
 
-Load this .dll into your AoC process somehow. You can use an exe mod or hijack your `language_x1_p1.dll` for this (put your strings and a `LoadLibrary()` call in it).
+Grab `aoc-builtin-rms.dll` from the [releases](https://github.com/SiegeEngineers/aoc-builtin-rms/releases) page. Load this .dll into your AoC process somehow. You can use an exe mod or hijack your `language_x1_p1.dll` for this (put your strings and a `LoadLibrary()` call in it).
 
 Put your mod's random maps in a .drs archive as `bina` files. The IDs don't really matter so long as they don't clash. Using the 54240 ~ 54299 range is pretty safe. Note that random maps in `.drs` files do **not** automatically load `random_map.def`. Include this at the top of your scripts:
 
