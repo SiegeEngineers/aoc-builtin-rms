@@ -52,4 +52,4 @@ Optionally, `description` can refer to a string ID that will be shown when hover
 
 ## License
 
-[GPL-3.0](./LICENSE.md)
+[LGPL-3.0](./LICENSE.md)
