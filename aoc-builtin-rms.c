@@ -4,6 +4,12 @@
 #define RMS_STANDARD 0
 #define RMS_REALWORLD 1
 
+#ifdef DEBUG
+#  define debug(...) printf(__VA_ARGS__)
+#else
+#  define debug(...)
+#endif
+
 struct CustomMap {
   /* Internal ID of the map--stored as an int but many places in game assume it's a single byte
    * so this should not exceed 255 */
@@ -203,7 +209,7 @@ static void parse_maps() {
   char* mod_config = *(char**)offs_game_xml;
   char* read_ptr = strstr(mod_config, "<random-maps>");
   char* end_ptr = strstr(read_ptr, "</random-maps>");
-  printf("[aoe2-builtin-rms] range: %p %p\n", read_ptr, end_ptr);
+  debug("[aoe2-builtin-rms] range: %p %p\n", read_ptr, end_ptr);
 
   if (read_ptr == NULL || end_ptr == NULL) return;
 
@@ -251,7 +257,7 @@ static void __thiscall dropdown_add_line_hook(void* dd, int label, int value) {
     additional_type = RMS_REALWORLD;
 
   if (additional_type !=  -1) {
-    printf("[aoe2-builtin-rms] called hooked dropdown_add_line %p %p, %d %d\n", dd, text_panel, label, value);
+    debug("[aoe2-builtin-rms] called hooked dropdown_add_line %p %p, %d %d\n", dd, text_panel, label, value);
   }
 
   // Original
@@ -268,7 +274,7 @@ static void __thiscall dropdown_add_line_hook(void* dd, int label, int value) {
 }
 
 static int __thiscall text_get_map_value_hook(void* tt, int line_index) {
-  printf("[aoe2-builtin-rms] called hooked text_get_map_value %p %d\n", tt, line_index);
+  debug("[aoe2-builtin-rms] called hooked text_get_map_value %p %d\n", tt, line_index);
   int selected_map_id = aoc_text_get_value(tt, line_index);
 
   for (int i = 0; custom_maps[i].id; i++) {
@@ -284,7 +290,7 @@ static int __thiscall text_get_map_value_hook(void* tt, int line_index) {
 
 static void* current_game_info;
 static void __thiscall map_generate_hook(void* map, int size_x, int size_y, char* name, void* game_info, int num_players) {
-  printf("[aoe2-builtin-rms] called hooked map_generate %s %p\n", name, game_info);
+  debug("[aoe2-builtin-rms] called hooked map_generate %s %p\n", name, game_info);
   /* We need to store this to be able to load the scx file later */
   current_game_info = game_info;
   aoc_map_generate(map, size_x, size_y, name, game_info, num_players);
@@ -293,19 +299,19 @@ static void __thiscall map_generate_hook(void* map, int size_x, int size_y, char
 static char map_filename_str[MAX_PATH];
 static char scx_filename_str[MAX_PATH];
 static void* __thiscall rms_controller_hook(void* controller, char* filename, int drs_id) {
-  printf("[aoe2-builtin-rms] called hooked rms_controller %s %d\n", filename, drs_id);
+  debug("[aoe2-builtin-rms] called hooked rms_controller %s %d\n", filename, drs_id);
   int map_type = get_map_type();
-  printf("[aoe2-builtin-rms] map type: %d\n", map_type);
+  debug("[aoe2-builtin-rms] map type: %d\n", map_type);
   for (int i = 0; custom_maps[i].id; i++) {
     if (custom_maps[i].id == map_type) {
       sprintf(map_filename_str, "%s.rms", custom_maps[i].name);
       filename = map_filename_str;
       drs_id = custom_maps[i].drs_id;
-      printf("[aoe2-builtin-rms] filename/id is now: %s %d\n", filename, drs_id);
+      debug("[aoe2-builtin-rms] filename/id is now: %s %d\n", filename, drs_id);
 
       if (custom_maps[i].scx_drs_id > 0) {
         sprintf(scx_filename_str, "real_world_%s.scx", custom_maps[i].name);
-        printf("[aoe2-builtin-rms] real world map: loading %s %d\n",
+        debug("[aoe2-builtin-rms] real world map: loading %s %d\n",
             scx_filename_str, custom_maps[i].scx_drs_id);
         aoc_load_scx(get_world(),
             scx_filename_str,
@@ -326,7 +332,7 @@ static int __thiscall ai_define_map_symbol_hook(void* ai, char* name) {
     for (int i = 0; custom_maps[i].id; i++) {
       if (custom_maps[i].id == map_type) {
         name = custom_maps[i].ai_symbol_name;
-        printf("[aoe2-builtin-rms] defining ai symbol: %s\n", name);
+        debug("[aoe2-builtin-rms] defining ai symbol: %s\n", name);
         break;
       }
     }
@@ -336,7 +342,7 @@ static int __thiscall ai_define_map_symbol_hook(void* ai, char* name) {
 
 static int __thiscall ai_define_map_const_hook(void* ai, char* name, int value) {
   for (int i = 0; custom_maps[i].id; i++) {
-    printf("[aoe2-builtin-rms] defining ai const: %s = %d\n", custom_maps[i].ai_const_name, custom_maps[i].id);
+    debug("[aoe2-builtin-rms] defining ai const: %s = %d\n", custom_maps[i].ai_const_name, custom_maps[i].id);
     aoc_ai_define_const(ai,
         custom_maps[i].ai_const_name,
         custom_maps[i].id);
@@ -344,38 +350,27 @@ static int __thiscall ai_define_map_const_hook(void* ai, char* name, int value) 
   return aoc_ai_define_const(ai, "scenario-map", -1);
 }
 
-static char* get_error_message(HRESULT hr) {
-  LPTSTR message = NULL;
-  FormatMessage(
-    FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_IGNORE_INSERTS,
-    NULL,
-    hr,
-    MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-    (LPTSTR)&message,
-    0,
-    NULL
-  );
-
-  return message;
-}
-
-static void overwrite_bytes(void* ptr, void* value, size_t size) {
+/**
+ * Overwrite some bytes in the current process.
+ * Returns TRUE if it worked, FALSE if not.
+ */
+static BOOL overwrite_bytes(void* ptr, void* value, size_t size) {
   DWORD old;
   DWORD tmp;
   if (!VirtualProtect(ptr, size, PAGE_EXECUTE_READWRITE, &old)) {
-    printf("[aoe2-builtin-rms] Couldn't unprotect?! @ %p %d %d\n", ptr, size, PAGE_EXECUTE_READWRITE);
-    printf("[aoe2-builtin-rms] %s", get_error_message(HRESULT_FROM_WIN32(GetLastError())));
-  } else {
-    memcpy(ptr, value, size);
-    VirtualProtect(ptr, size, old, &tmp);
+    debug("[aoe2-builtin-rms] Couldn't unprotect?! @ %p\n", ptr);
+    return FALSE;
   }
+  memcpy(ptr, value, size);
+  VirtualProtect(ptr, size, old, &tmp);
+  return TRUE;
 }
 
 /**
  * Install a hook that works by JMP-ing to the new implementation.
  * This is handy for hooking existing functions, override their first bytes by a JMP and all the arguments will still be on the stack/in registries. C functions can just be used (with appropriate calling convention) as if they were called directly by the application.
  */
-static void install_jmphook (void* orig_address, void* hook_address) {
+static BOOL install_jmphook (void* orig_address, void* hook_address) {
   char patch[6] = {
     0xE9, // jmp
     0, 0, 0, 0, // addr
@@ -383,44 +378,45 @@ static void install_jmphook (void* orig_address, void* hook_address) {
   };
   int offset = PtrToUlong(hook_address) - PtrToUlong(orig_address + 5);
   memcpy(&patch[1], &offset, sizeof(offset));
-  printf("[aoe2-builtin-rms] installing hook at %p JMP %x (%p %p)\n", orig_address, offset, hook_address, orig_address);
-  overwrite_bytes(orig_address, patch, 6);
+  debug("[aoe2-builtin-rms] installing hook at %p JMP %x (%p %p)\n", orig_address, offset, hook_address, orig_address);
+  return overwrite_bytes(orig_address, patch, 6);
 }
 
 /**
  * Install a hook that works by CALL-ing to the new implementation.
  * Handy for hooking existing CALL-sites, overriding essentially just the address.
  */
-static void install_callhook (void* orig_address, void* hook_address) {
+static BOOL install_callhook (void* orig_address, void* hook_address) {
   char patch[5] = {
     0xE8, // call
     0, 0, 0, 0 // addr
   };
   int offset = PtrToUlong(hook_address) - PtrToUlong(orig_address + 5);
   memcpy(&patch[1], &offset, sizeof(offset));
-  printf("[aoe2-builtin-rms] installing hook at %p CALL %x (%p %p)\n", orig_address, offset, hook_address, orig_address);
-  overwrite_bytes(orig_address, patch, 5);
+  debug("[aoe2-builtin-rms] installing hook at %p CALL %x (%p %p)\n", orig_address, offset, hook_address, orig_address);
+  return overwrite_bytes(orig_address, patch, 5);
 }
 
 /**
  * Install a hook that works by overriding a pointer in a vtable.
  * Handy for hooking class methods.
  */
-static void install_vtblhook (void* orig_address, void* hook_address) {
+static BOOL install_vtblhook (void* orig_address, void* hook_address) {
   /* int offset = PtrToUlong(hook_address) - PtrToUlong(orig_address + 5); */
   int offset = PtrToUlong(hook_address);
-  printf("[aoe2-builtin-rms] installing hook at %p VTBL %x (%p %p)\n", orig_address, offset, hook_address, orig_address);
-  overwrite_bytes(orig_address, (char*)&offset, 4);
+  debug("[aoe2-builtin-rms] installing hook at %p VTBL %x (%p %p)\n", orig_address, offset, hook_address, orig_address);
+  return overwrite_bytes(orig_address, (char*)&offset, 4);
 }
 
 static void init() {
-  printf("[aoe2-builtin-rms] init()\n");
+  debug("[aoe2-builtin-rms] init()\n");
   parse_maps();
 
   if (count_custom_maps() == 0) {
-    printf("[aoe2-builtin-rms] no custom maps specified, stopping\n");
+    printf("[aoe2-builtin-rms] No custom maps specified, stopping.\n");
     return;
   }
+  printf("[aoe2-builtin-rms] Found custom maps, installing hooks.\n");
 
   /* Stuff to display custom maps in the dropdown menus */
   aoc_dropdown_add_line = (fn_dropdown_add_line) offs_dropdown_add_line;
@@ -448,7 +444,7 @@ static void init() {
 }
 
 static void deinit() {
-  printf("[aoe2-builtin-rms] deinit()\n");
+  debug("[aoe2-builtin-rms] deinit()\n");
   for (size_t i = 0; custom_maps[i].id; i++) {
     if (custom_maps[i].name != NULL)
       free(custom_maps[i].name);
@@ -461,7 +457,7 @@ static void deinit() {
 }
 
 BOOL WINAPI DllMain(HINSTANCE dll, DWORD reason, void* _) {
-  printf("[aoe2-builtin-rms] DllMain %ld\n", reason);
+  debug("[aoe2-builtin-rms] DllMain %ld\n", reason);
   switch (reason) {
     case DLL_PROCESS_ATTACH: init(); break;
     case DLL_PROCESS_DETACH: deinit(); break;
