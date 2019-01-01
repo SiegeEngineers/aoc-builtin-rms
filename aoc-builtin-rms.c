@@ -30,41 +30,41 @@ struct CustomMap {
  * Store custom builtin maps.
  * 100 is a random maximum number I picked that seems high enough for most mods.
  */
-struct CustomMap custom_maps[100] = {
+static struct CustomMap custom_maps[100] = {
   { 0 }
 };
 
 /* offsets for finding data */
 
 /* location of the main game instance object */
-const size_t offs_game_instance = 0x7912A0;
+static const size_t offs_game_instance = 0x7912A0;
 /* offset of the map type attribute in the game_instance struct */
-const size_t offs_map_type = 0x13DC;
+static const size_t offs_map_type = 0x13DC;
 /* offset of the world instance pointer in the game_instance struct */
-const size_t offs_world = 0x424;
+static const size_t offs_world = 0x424;
 /* location of the XML source for the active UP mod */
-const size_t offs_game_xml = 0x7A5070;
+static const size_t offs_game_xml = 0x7A5070;
 
 /* offsets for hooking the random map file reading/parsing */
 
 /* location of the controller call site that has correct filename,drs_id parameters */
-const size_t offs_rms_controller = 0x45F717;
+static const size_t offs_rms_controller = 0x45F717;
 /* location of the controller constructor */
-const size_t offs_rms_controller_constructor = 0x534C40;
+static const size_t offs_rms_controller_constructor = 0x534C40;
 typedef void* __thiscall (*fn_rms_load_scx)(void*, char*, int, void*);
 typedef void* __thiscall (*fn_rms_controller_constructor)(void*, char*, int);
 
 /* offsets for hooking the builtin random map file list */
 
-const size_t offs_dropdown_add_line = 0x550870;
-const size_t offs_text_add_line = 0x5473F0;
-const size_t offs_dropdown_add_string = 0x550840;
+static const size_t offs_dropdown_add_line = 0x550870;
+static const size_t offs_text_add_line = 0x5473F0;
+static const size_t offs_dropdown_add_string = 0x550840;
 /* location of fn that gets the ID value of a text panel row */
-const size_t offs_text_get_value = 0x5479D0;
+static const size_t offs_text_get_value = 0x5479D0;
 /* location of fn that sets the hover description for a text panel row */
-const size_t offs_text_set_rollover_id = 0x547C20;
+static const size_t offs_text_set_rollover_id = 0x547C20;
 /* location of the call to text_get_value that happens when applying rollover description IDs */
-const size_t offs_text_get_map_value = 0x5086E1;
+static const size_t offs_text_get_map_value = 0x5086E1;
 typedef int __thiscall (*fn_dropdown_add_line)(void*, int, int);
 typedef int __thiscall (*fn_text_add_line)(void*, int, int);
 typedef int __thiscall (*fn_dropdown_add_string)(void*, char*, int);
@@ -72,17 +72,17 @@ typedef int __thiscall (*fn_text_get_value)(void*, int);
 typedef int __thiscall (*fn_text_set_rollover_id)(void*, int, int);
 
 /* offsets for defining the AI constants */
-const size_t offs_ai_define_symbol = 0x5F74F0;
-const size_t offs_ai_define_const = 0x5F7530;
-const size_t offs_ai_define_map_symbol = 0x4A27F7;
-const size_t offs_ai_define_map_const = 0x4A4470;
+static const size_t offs_ai_define_symbol = 0x5F74F0;
+static const size_t offs_ai_define_const = 0x5F7530;
+static const size_t offs_ai_define_map_symbol = 0x4A27F7;
+static const size_t offs_ai_define_map_const = 0x4A4470;
 typedef int __thiscall (*fn_ai_define_symbol)(void*, char*);
 typedef int __thiscall (*fn_ai_define_const)(void*, char*, int);
 
 /* offsets for real world map hooks */
-const size_t offs_vtbl_map_generate = 0x638114;
-const size_t offs_map_generate = 0x45EE10;
-const size_t offs_load_scx = 0x40DF00;
+static const size_t offs_vtbl_map_generate = 0x638114;
+static const size_t offs_map_generate = 0x45EE10;
+static const size_t offs_load_scx = 0x40DF00;
 typedef int __thiscall (*fn_map_generate)(void*, int, int, char*, void*, int);
 typedef int __thiscall (*fn_load_scx)(void*, char*, int, void*);
 
@@ -100,7 +100,7 @@ static fn_load_scx aoc_load_scx = 0;
 /**
  * Count the number of custom maps.
  */
-size_t count_custom_maps() {
+static size_t count_custom_maps() {
   size_t i = 0;
   for (; custom_maps[i].id; i++) {}
   return i;
@@ -117,7 +117,7 @@ size_t count_custom_maps() {
  * The pointer in `read_ptr_ptr` will point past the end of the <map/> element
  * after this function.
  */
-int parse_map(char** read_ptr_ptr) {
+static int parse_map(char** read_ptr_ptr) {
   struct CustomMap map = {
     .id = 0,
     .name = NULL,
@@ -199,7 +199,7 @@ int parse_map(char** read_ptr_ptr) {
 /**
  * Parse a <random-maps> section from a UserPatch mod description file.
  */
-void parse_maps() {
+static void parse_maps() {
   char* mod_config = *(char**)offs_game_xml;
   char* read_ptr = strstr(mod_config, "<random-maps>");
   char* end_ptr = strstr(read_ptr, "</random-maps>");
@@ -220,24 +220,24 @@ void parse_maps() {
   }
 }
 
-int get_map_type() {
+static int get_map_type() {
   int base_offset = *(int*)offs_game_instance;
   return *(int*)(base_offset + offs_map_type);
 }
 
-void* get_world() {
+static void* get_world() {
   int base_offset = *(int*)offs_game_instance;
   return *(void**)(base_offset + offs_world);
 }
 
-char is_last_map_dropdown_entry(int label, int value) {
+static char is_last_map_dropdown_entry(int label, int value) {
   return label == 10894 && value == 27; /* Yucatan */
 }
-char is_last_real_world_dropdown_entry(int label, int value) {
+static char is_last_real_world_dropdown_entry(int label, int value) {
   return label == 13553 && value == 43; /* Byzantium */
 }
 
-void __thiscall dropdown_add_line_hook(void* dd, int label, int value) {
+static void __thiscall dropdown_add_line_hook(void* dd, int label, int value) {
   int dd_offset = (int)dd;
   void* text_panel = *(void**)(dd_offset + 256);
   if (text_panel == NULL) {
@@ -267,7 +267,7 @@ void __thiscall dropdown_add_line_hook(void* dd, int label, int value) {
   }
 }
 
-int __thiscall text_get_map_value_hook(void* tt, int line_index) {
+static int __thiscall text_get_map_value_hook(void* tt, int line_index) {
   printf("[aoe2-builtin-rms] called hooked text_get_map_value %p %d\n", tt, line_index);
   int selected_map_id = aoc_text_get_value(tt, line_index);
 
@@ -283,7 +283,7 @@ int __thiscall text_get_map_value_hook(void* tt, int line_index) {
 }
 
 static void* current_game_info;
-void __thiscall map_generate_hook(void* map, int size_x, int size_y, char* name, void* game_info, int num_players) {
+static void __thiscall map_generate_hook(void* map, int size_x, int size_y, char* name, void* game_info, int num_players) {
   printf("[aoe2-builtin-rms] called hooked map_generate %s %p\n", name, game_info);
   /* We need to store this to be able to load the scx file later */
   current_game_info = game_info;
@@ -292,7 +292,7 @@ void __thiscall map_generate_hook(void* map, int size_x, int size_y, char* name,
 
 static char map_filename_str[MAX_PATH];
 static char scx_filename_str[MAX_PATH];
-void* __thiscall rms_controller_hook(void* controller, char* filename, int drs_id) {
+static void* __thiscall rms_controller_hook(void* controller, char* filename, int drs_id) {
   printf("[aoe2-builtin-rms] called hooked rms_controller %s %d\n", filename, drs_id);
   int map_type = get_map_type();
   printf("[aoe2-builtin-rms] map type: %d\n", map_type);
@@ -320,7 +320,7 @@ void* __thiscall rms_controller_hook(void* controller, char* filename, int drs_i
   return aoc_rms_controller_constructor(controller, filename, drs_id);
 }
 
-int __thiscall ai_define_map_symbol_hook(void* ai, char* name) {
+static int __thiscall ai_define_map_symbol_hook(void* ai, char* name) {
   if (strcmp(name, "SCENARIO-MAP") == 0) {
     int map_type = get_map_type();
     for (int i = 0; custom_maps[i].id; i++) {
@@ -334,7 +334,7 @@ int __thiscall ai_define_map_symbol_hook(void* ai, char* name) {
   return aoc_ai_define_symbol(ai, name);
 }
 
-int __thiscall ai_define_map_const_hook(void* ai, char* name, int value) {
+static int __thiscall ai_define_map_const_hook(void* ai, char* name, int value) {
   for (int i = 0; custom_maps[i].id; i++) {
     printf("[aoe2-builtin-rms] defining ai const: %s = %d\n", custom_maps[i].ai_const_name, custom_maps[i].id);
     aoc_ai_define_const(ai,
@@ -344,7 +344,7 @@ int __thiscall ai_define_map_const_hook(void* ai, char* name, int value) {
   return aoc_ai_define_const(ai, "scenario-map", -1);
 }
 
-char* get_error_message(HRESULT hr) {
+static char* get_error_message(HRESULT hr) {
   LPTSTR message = NULL;
   FormatMessage(
     FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_IGNORE_INSERTS,
@@ -359,7 +359,7 @@ char* get_error_message(HRESULT hr) {
   return message;
 }
 
-void overwrite_bytes(void* ptr, void* value, size_t size) {
+static void overwrite_bytes(void* ptr, void* value, size_t size) {
   DWORD old;
   DWORD tmp;
   if (!VirtualProtect(ptr, size, PAGE_EXECUTE_READWRITE, &old)) {
@@ -375,7 +375,7 @@ void overwrite_bytes(void* ptr, void* value, size_t size) {
  * Install a hook that works by JMP-ing to the new implementation.
  * This is handy for hooking existing functions, override their first bytes by a JMP and all the arguments will still be on the stack/in registries. C functions can just be used (with appropriate calling convention) as if they were called directly by the application.
  */
-void install_jmphook (void* orig_address, void* hook_address) {
+static void install_jmphook (void* orig_address, void* hook_address) {
   char patch[6] = {
     0xE9, // jmp
     0, 0, 0, 0, // addr
@@ -391,7 +391,7 @@ void install_jmphook (void* orig_address, void* hook_address) {
  * Install a hook that works by CALL-ing to the new implementation.
  * Handy for hooking existing CALL-sites, overriding essentially just the address.
  */
-void install_callhook (void* orig_address, void* hook_address) {
+static void install_callhook (void* orig_address, void* hook_address) {
   char patch[5] = {
     0xE8, // call
     0, 0, 0, 0 // addr
@@ -406,14 +406,14 @@ void install_callhook (void* orig_address, void* hook_address) {
  * Install a hook that works by overriding a pointer in a vtable.
  * Handy for hooking class methods.
  */
-void install_vtblhook (void* orig_address, void* hook_address) {
+static void install_vtblhook (void* orig_address, void* hook_address) {
   /* int offset = PtrToUlong(hook_address) - PtrToUlong(orig_address + 5); */
   int offset = PtrToUlong(hook_address);
   printf("[aoe2-builtin-rms] installing hook at %p VTBL %x (%p %p)\n", orig_address, offset, hook_address, orig_address);
   overwrite_bytes(orig_address, (char*)&offset, 4);
 }
 
-void init() {
+static void init() {
   printf("[aoe2-builtin-rms] init()\n");
   parse_maps();
 
@@ -447,7 +447,7 @@ void init() {
   install_vtblhook((void*) offs_vtbl_map_generate, map_generate_hook);
 }
 
-void deinit() {
+static void deinit() {
   printf("[aoe2-builtin-rms] deinit()\n");
   for (size_t i = 0; custom_maps[i].id; i++) {
     if (custom_maps[i].name != NULL)
