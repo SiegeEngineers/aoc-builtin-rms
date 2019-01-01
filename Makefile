@@ -1,26 +1,20 @@
 CC = i686-w64-mingw32-gcc
 
-CFLAGS = -Wall -m32
-LDFLAGS = 
-
 OPTFLAGS = -O3 -s
 DBGFLAGS = -DDEBUG -g
 
 ifeq ($(RELEASE),1)
-  FLAGS = $(CFLAGS) $(OPTFLAGS)
+  FLAGS = $(OPTFLAGS)
 else
-  FLAGS = $(CFLAGS) $(DBGFLAGS)
+  FLAGS = $(DBGFLAGS)
 endif
-
-SOURCES = $(shell echo *.c)
-OBJECTS = $(SOURCES:.c=.o)
 
 all: aoc-builtin-rms.dll
 
 clean:
-	rm -f $(OBJECTS)
+	rm -f aoc-builtin-rms.dll
 
 .PHONY: all clean
 
 aoc-builtin-rms.dll: aoc-builtin-rms.c
-	$(CC) -o $@ $(FLAGS) -shared $< $(LDFLAGS)
+	$(CC) -o $@ -Wall -m32 $(FLAGS) -shared $<
