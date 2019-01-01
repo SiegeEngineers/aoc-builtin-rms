@@ -50,6 +50,23 @@ Optionally, `description` can refer to a string ID that will be shown when hover
 <map id="-10" name="valley" drsId="54260" string="10923" description="30155" />
 ```
 
+## Build
+
+This project can only be built with MinGW GCC compilers at this time.
+
+To create a debug build (with some logging):
+
+```
+make
+```
+
+To create a release build (smaller and no logging):
+
+```
+make clean
+env RELEASE=1 make
+```
+
 ## License
 
 [LGPL-3.0](./LICENSE.md)
