@@ -459,7 +459,10 @@ static void deinit() {
 BOOL WINAPI DllMain(HINSTANCE dll, DWORD reason, void* _) {
   debug("[aoe2-builtin-rms] DllMain %ld\n", reason);
   switch (reason) {
-    case DLL_PROCESS_ATTACH: init(); break;
+    case DLL_PROCESS_ATTACH:
+      DisableThreadLibraryCalls(dll);
+      init();
+      break;
     case DLL_PROCESS_DETACH: deinit(); break;
   }
   return 1;
