@@ -152,7 +152,6 @@ static int parse_map(char** read_ptr_ptr) {
   char name[80];
   sscanf(name_ptr, "name=\"%79[^\"]\"", name);
   if (strlen(name) < 1) { return ERR_NO_NAME; }
-  name[strlen(name) - 1] = '\0'; // chop off the "
   map.name = calloc(1, strlen(name) + 1);
   strcpy(map.name, name);
 
