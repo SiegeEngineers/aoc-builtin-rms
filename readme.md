@@ -50,6 +50,13 @@ Optionally, `description` can refer to a string ID that will be shown when hover
 <map id="-10" name="valley" drsId="54260" string="10923" description="30155" />
 ```
 
+Optionally, `terrainOverrides` can be used to override terrain SLPs, similarly to how ZR@ maps allow you to do for custom random maps in UserPatch 1.5. `terrainOverrides` is a comma-separated strings of SLP id replacements:
+```xml
+<map terrainOverrides="15018=15033,15014=15012" />
+```
+The left-hand side is the original SLP ID, where the right-hand side is the new SLP ID. In this case, the road SLP (15018) is replaced with a custom SLP 15033, and the shallows SLP (15014) is replaced with a custom SLP 15012. This is similar to placing the graphic for the 15033 slp in your ZR@ map as `15018.slp`.
+These replacement SLPs must be present in the `slp ` resource table of a DRS file with your mod.
+
 ## Build
 
 This project can only be built with MinGW GCC compilers at this time.

@@ -4,13 +4,20 @@
 #define RMS_STANDARD 0
 #define RMS_REALWORLD 1
 
+#define TERRAIN_TEXTURE_BASE 15000
+#define TERRAIN_TEXTURE_MAX 15050
+
 #ifdef DEBUG
 #  define debug(...) printf(__VA_ARGS__)
 #else
 #  define debug(...)
 #endif
 
-struct CustomMap {
+typedef struct terrain_overrides {
+  int terrains[50];
+} terrain_overrides_t;
+
+typedef struct custom_map {
   /* Internal ID of the map--stored as an int but many places in game assume it's a single byte
    * so this should not exceed 255 */
   int id;
@@ -30,13 +37,15 @@ struct CustomMap {
   char type;
   /* DRS ID of the scenario if a real world map (not yet supported) */
   int scx_drs_id;
-};
+  /* Custom terrain texture IDs */
+  terrain_overrides_t terrains;
+} custom_map_t;
 
 /**
  * Store custom builtin maps.
  * 100 is a random maximum number I picked that seems high enough for most mods.
  */
-static struct CustomMap custom_maps[100] = {
+static custom_map_t custom_maps[100] = {
   { 0 }
 };
 
@@ -48,6 +57,14 @@ static const size_t offs_game_instance = 0x7912A0;
 static const size_t offs_map_type = 0x13DC;
 /* offset of the world instance pointer in the game_instance struct */
 static const size_t offs_world = 0x424;
+/* offset of the map data pointer in the world struct */
+static const size_t offs_map = 0x34;
+/* offset of the terrains data pointer in the map struct */
+static const size_t offs_terrains = 0x8C;
+static const size_t sizeof_terrain_struct = 0x1B4;
+/* offset of the texture id and pointer in the terrain struct */
+static const size_t offs_terrain_texture_id = 0x1C;
+static const size_t offs_terrain_texture = 0x20;
 /* location of the XML source for the active UP mod */
 static const size_t offs_game_xml = 0x7A5070;
 
@@ -92,6 +109,12 @@ static const size_t offs_load_scx = 0x40DF00;
 typedef int __thiscall (*fn_map_generate)(void*, int, int, char*, void*, int);
 typedef int __thiscall (*fn_load_scx)(void*, char*, int, void*);
 
+/* offsets for terrain overrides */
+static const size_t offs_texture_create = 0x4DAE00;
+static const size_t offs_texture_destroy = 0x4DB110;
+typedef void* __thiscall (*fn_texture_create)(void*, char*, int);
+typedef void __thiscall (*fn_texture_destroy)(void*);
+
 static fn_rms_controller_constructor aoc_rms_controller_constructor = 0;
 static fn_dropdown_add_line aoc_dropdown_add_line = 0;
 static fn_text_add_line aoc_text_add_line = 0;
@@ -102,6 +125,8 @@ static fn_ai_define_symbol aoc_ai_define_symbol = 0;
 static fn_ai_define_const aoc_ai_define_const = 0;
 static fn_map_generate aoc_map_generate = 0;
 static fn_load_scx aoc_load_scx = 0;
+static fn_texture_create aoc_texture_create = 0;
+static fn_texture_destroy aoc_texture_destroy = 0;
 
 /**
  * Count the number of custom maps.
@@ -117,6 +142,29 @@ static size_t count_custom_maps() {
 #define ERR_NO_STRING_ID 4
 #define ERR_NO_DRS_ID 3
 #define ERR_TOO_BIG_ID 5
+#define ERR_TOO_BIG_TERRAIN 6
+
+static int parse_map_terrain_overrides(char* source, terrain_overrides_t* out) {
+  char* read_ptr = source;
+  char* end_ptr = strchr(source, '\0');
+
+  do {
+    int orig = 0;
+    int replace = 0;
+    sscanf(read_ptr, "%d=%d", &orig, &replace);
+    if (orig > 0 && replace > 0) {
+      if (orig < TERRAIN_TEXTURE_BASE || orig >= TERRAIN_TEXTURE_MAX) {
+        return ERR_TOO_BIG_TERRAIN;
+      }
+      debug("[aoe2-builtin-rms] found terrain override: %d -> %d\n", orig, replace);
+      out->terrains[orig - TERRAIN_TEXTURE_BASE] = replace;
+    }
+
+    read_ptr = strchr(read_ptr, ',');
+    if (read_ptr != NULL) read_ptr++;
+  } while (read_ptr && read_ptr < end_ptr);
+  return 0;
+}
 
 /**
  * Parse a <map /> XML element from the string pointed to by `read_ptr_ptr`.
@@ -124,7 +172,7 @@ static size_t count_custom_maps() {
  * after this function.
  */
 static int parse_map(char** read_ptr_ptr) {
-  struct CustomMap map = {
+  custom_map_t map = {
     .id = 0,
     .name = NULL,
     .string = -1,
@@ -134,6 +182,9 @@ static int parse_map(char** read_ptr_ptr) {
     .type = RMS_STANDARD,
     .scx_drs_id = -1
   };
+  for (int i = 0; i < 50; i++) {
+    map.terrains.terrains[i] = -1;
+  }
 
   char* read_ptr = *read_ptr_ptr;
   char* end_ptr = strstr(read_ptr, "/>");
@@ -177,6 +228,16 @@ static int parse_map(char** read_ptr_ptr) {
     sscanf(description_ptr, "description=\"%d\"", &map.description);
   }
 
+  char* override_ptr = strstr(read_ptr, "terrainOverrides=\"");
+  char override_str[501];
+  if (override_ptr != NULL && override_ptr < end_ptr) {
+    sscanf(override_ptr, "terrainOverrides=\"%500[^\"]\"", override_str);
+    int result = parse_map_terrain_overrides(override_str, &map.terrains);
+    if (result != 0) {
+      return result;
+    }
+  }
+
   // Derive ai const name: lowercase name
   char const_name[80];
   int const_len = sprintf(const_name, "%s", name);
@@ -195,7 +256,7 @@ static int parse_map(char** read_ptr_ptr) {
   printf("[aoe2-builtin-rms] Add modded map: %s\n", map.name);
   size_t i = count_custom_maps();
   custom_maps[i] = map;
-  custom_maps[i + 1] = (struct CustomMap) {0};
+  custom_maps[i + 1] = (custom_map_t) {0};
 
   *read_ptr_ptr = end_ptr + 2;
   return 0;
@@ -220,6 +281,7 @@ static void parse_maps() {
       case ERR_NO_STRING_ID: MessageBoxA(NULL, "A <map /> is missing a string attribute", NULL, 0); break;
       case ERR_NO_DRS_ID: MessageBoxA(NULL, "A <map /> is missing a drsId attribute", NULL, 0); break;
       case ERR_TOO_BIG_ID: MessageBoxA(NULL, "A <map />'s map ID is too large: must be at most 255", NULL, 0); break;
+      case ERR_TOO_BIG_TERRAIN: MessageBoxA(NULL, "A <map /> has an incorrect terrainOverrides attribute. Only terrains 15000-15050 can be overridden", NULL, 0); break;
       default: break;
     }
   }
@@ -287,6 +349,38 @@ static int __thiscall text_get_map_value_hook(void* tt, int line_index) {
   return selected_map_id;
 }
 
+static void replace_terrain_texture(void* texture, int terrain_id, int slp_id) {
+  debug("[aoc-builtin-rms] Replacing texture for terrain #%d by SLP %d\n", terrain_id, slp_id);
+  aoc_texture_destroy(texture);
+  char name[100];
+  sprintf(name, "terrain%d.shp", terrain_id);
+  aoc_texture_create(texture, name, slp_id);
+}
+
+static void apply_terrain_overrides(terrain_overrides_t* overrides) {
+  void* world = get_world();
+  size_t world_offset = (size_t) world;
+  void* map = *(void**)(world_offset + offs_map);
+  size_t map_offset = (size_t) map;
+  for (int i = 0; i < 42; i++) {
+    size_t terrain_offset = map_offset + offs_terrains + (sizeof_terrain_struct * i);
+    int* texture_id = (int*)(terrain_offset + offs_terrain_texture_id);
+    void* texture = *(void**)(terrain_offset + offs_terrain_texture);
+    if (*texture_id < TERRAIN_TEXTURE_BASE || *texture_id >= TERRAIN_TEXTURE_MAX) continue;
+
+    int new_texture_id = overrides->terrains[*texture_id - TERRAIN_TEXTURE_BASE];
+    // In UserPatch 1.5, ZR@ terrains are applied very late (after this function runs)
+    // They work by looping through _all_ terrain types on _every_ map, even non-ZR@,
+    // and re-constructing the texture instances (in the same way as replace_terrain_texture).
+    // So, it also reconstructs non-changed textures, based on the texture_id. That's why
+    // we overwrite it here. the game doesn't actually use it.
+    if (new_texture_id != -1) {
+      *texture_id = new_texture_id;
+      replace_terrain_texture(texture, i, new_texture_id);
+    }
+  }
+}
+
 static void* current_game_info;
 static void __thiscall map_generate_hook(void* map, int size_x, int size_y, char* name, void* game_info, int num_players) {
   debug("[aoe2-builtin-rms] called hooked map_generate %s %p\n", name, game_info);
@@ -307,6 +401,8 @@ static void* __thiscall rms_controller_hook(void* controller, char* filename, in
       filename = map_filename_str;
       drs_id = custom_maps[i].drs_id;
       debug("[aoe2-builtin-rms] filename/id is now: %s %d\n", filename, drs_id);
+
+      apply_terrain_overrides(&custom_maps[i].terrains);
 
       if (custom_maps[i].scx_drs_id > 0) {
         sprintf(scx_filename_str, "real_world_%s.scx", custom_maps[i].name);
@@ -425,6 +521,10 @@ static void init() {
   aoc_text_set_rollover_id = (fn_text_set_rollover_id) offs_text_set_rollover_id;
   install_jmphook((void*) offs_dropdown_add_line, dropdown_add_line_hook);
   install_callhook((void*) offs_text_get_map_value, text_get_map_value_hook);
+
+  /* Stuff to override terrain textures */
+  aoc_texture_create = (fn_texture_create) offs_texture_create;
+  aoc_texture_destroy = (fn_texture_destroy) offs_texture_destroy;
 
   /* Stuff to resolve the custom map ID to a DRS file */
   aoc_rms_controller_constructor = (fn_rms_controller_constructor) offs_rms_controller_constructor;
