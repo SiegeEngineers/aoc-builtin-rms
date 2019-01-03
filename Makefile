@@ -9,12 +9,14 @@ else
   FLAGS = $(DBGFLAGS)
 endif
 
-all: aoc-builtin-rms.dll
+all: aoc-builtin-rms.dll aoc-builtin-rms-api.dll
 
 clean:
-	rm -f aoc-builtin-rms.dll
+	rm -f aoc-builtin-rms.dll aoc-builtin-rms-api.dll
 
 .PHONY: all clean
 
-aoc-builtin-rms.dll: aoc-builtin-rms.c
-	$(CC) -o $@ -Wall -m32 $(FLAGS) -shared $<
+aoc-builtin-rms-api.dll: aoc-builtin-rms.c
+	$(CC) -o $@ -Wall -m32 $(FLAGS) -shared $^
+aoc-builtin-rms.dll: aoc-builtin-rms.c main.c
+	$(CC) -o $@ -Wall -m32 $(FLAGS) -shared $^
