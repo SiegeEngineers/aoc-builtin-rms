@@ -126,7 +126,7 @@ static void __thiscall dropdown_add_line_hook(void* dd, int label, int value) {
     additional_type = RMS_REALWORLD;
 
   if (additional_type !=  -1) {
-    debug("[aoe2-builtin-rms] called hooked dropdown_add_line %p %p, %d %d\n", dd, text_panel, label, value);
+    debug("[aoc-builtin-rms] called hooked dropdown_add_line %p %p, %d %d\n", dd, text_panel, label, value);
   }
 
   // Original
@@ -143,7 +143,7 @@ static void __thiscall dropdown_add_line_hook(void* dd, int label, int value) {
 }
 
 static int __thiscall text_get_map_value_hook(void* tt, int line_index) {
-  debug("[aoe2-builtin-rms] called hooked text_get_map_value %p %d\n", tt, line_index);
+  debug("[aoc-builtin-rms] called hooked text_get_map_value %p %d\n", tt, line_index);
   int selected_map_id = aoc_text_get_value(tt, line_index);
 
   for (int i = 0; i < num_custom_maps; i++) {
@@ -191,7 +191,7 @@ static void apply_terrain_overrides(terrain_overrides_t* overrides) {
 
 static void* current_game_info;
 static void __thiscall map_generate_hook(void* map, int size_x, int size_y, char* name, void* game_info, int num_players) {
-  debug("[aoe2-builtin-rms] called hooked map_generate %s %p\n", name, game_info);
+  debug("[aoc-builtin-rms] called hooked map_generate %s %p\n", name, game_info);
   /* We need to store this to be able to load the scx file later */
   current_game_info = game_info;
   aoc_map_generate(map, size_x, size_y, name, game_info, num_players);
@@ -200,21 +200,21 @@ static void __thiscall map_generate_hook(void* map, int size_x, int size_y, char
 static char map_filename_str[MAX_PATH];
 static char scx_filename_str[MAX_PATH];
 static void* __thiscall rms_controller_hook(void* controller, char* filename, int drs_id) {
-  debug("[aoe2-builtin-rms] called hooked rms_controller %s %d\n", filename, drs_id);
+  debug("[aoc-builtin-rms] called hooked rms_controller %s %d\n", filename, drs_id);
   int map_type = get_map_type();
-  debug("[aoe2-builtin-rms] map type: %d\n", map_type);
+  debug("[aoc-builtin-rms] map type: %d\n", map_type);
   for (int i = 0; i < num_custom_maps; i++) {
     if (custom_maps[i].id == map_type) {
       sprintf(map_filename_str, "%s.rms", custom_maps[i].name);
       filename = map_filename_str;
       drs_id = custom_maps[i].drs_id;
-      debug("[aoe2-builtin-rms] filename/id is now: %s %d\n", filename, drs_id);
+      debug("[aoc-builtin-rms] filename/id is now: %s %d\n", filename, drs_id);
 
       apply_terrain_overrides(&custom_maps[i].terrains);
 
       if (custom_maps[i].scx_drs_id > 0) {
         sprintf(scx_filename_str, "real_world_%s.scx", custom_maps[i].name);
-        debug("[aoe2-builtin-rms] real world map: loading %s %d\n",
+        debug("[aoc-builtin-rms] real world map: loading %s %d\n",
             scx_filename_str, custom_maps[i].scx_drs_id);
         aoc_load_scx(get_world(),
             scx_filename_str,
@@ -235,7 +235,7 @@ static int __thiscall ai_define_map_symbol_hook(void* ai, char* name) {
     for (int i = 0; i < num_custom_maps; i++) {
       if (custom_maps[i].id == map_type) {
         name = custom_maps[i].ai_symbol_name;
-        debug("[aoe2-builtin-rms] defining ai symbol: %s\n", name);
+        debug("[aoc-builtin-rms] defining ai symbol: %s\n", name);
         break;
       }
     }
@@ -245,7 +245,7 @@ static int __thiscall ai_define_map_symbol_hook(void* ai, char* name) {
 
 static int __thiscall ai_define_map_const_hook(void* ai, char* name, int value) {
   for (int i = 0; i < num_custom_maps; i++) {
-    debug("[aoe2-builtin-rms] defining ai const: %s = %d\n", custom_maps[i].ai_const_name, custom_maps[i].id);
+    debug("[aoc-builtin-rms] defining ai const: %s = %d\n", custom_maps[i].ai_const_name, custom_maps[i].id);
     aoc_ai_define_const(ai,
         custom_maps[i].ai_const_name,
         custom_maps[i].id);
@@ -261,7 +261,7 @@ static BOOL overwrite_bytes(void* ptr, void* value, size_t size) {
   DWORD old;
   DWORD tmp;
   if (!VirtualProtect(ptr, size, PAGE_EXECUTE_READWRITE, &old)) {
-    debug("[aoe2-builtin-rms] Couldn't unprotect?! @ %p\n", ptr);
+    debug("[aoc-builtin-rms] Couldn't unprotect?! @ %p\n", ptr);
     return FALSE;
   }
   memcpy(ptr, value, size);
@@ -281,7 +281,7 @@ static BOOL install_jmphook (void* orig_address, void* hook_address) {
   };
   int offset = PtrToUlong(hook_address) - PtrToUlong(orig_address + 5);
   memcpy(&patch[1], &offset, sizeof(offset));
-  debug("[aoe2-builtin-rms] installing hook at %p JMP %x (%p %p)\n", orig_address, offset, hook_address, orig_address);
+  debug("[aoc-builtin-rms] installing hook at %p JMP %x (%p %p)\n", orig_address, offset, hook_address, orig_address);
   return overwrite_bytes(orig_address, patch, 6);
 }
 
@@ -296,7 +296,7 @@ static BOOL install_callhook (void* orig_address, void* hook_address) {
   };
   int offset = PtrToUlong(hook_address) - PtrToUlong(orig_address + 5);
   memcpy(&patch[1], &offset, sizeof(offset));
-  debug("[aoe2-builtin-rms] installing hook at %p CALL %x (%p %p)\n", orig_address, offset, hook_address, orig_address);
+  debug("[aoc-builtin-rms] installing hook at %p CALL %x (%p %p)\n", orig_address, offset, hook_address, orig_address);
   return overwrite_bytes(orig_address, patch, 5);
 }
 
@@ -307,12 +307,12 @@ static BOOL install_callhook (void* orig_address, void* hook_address) {
 static BOOL install_vtblhook (void* orig_address, void* hook_address) {
   /* int offset = PtrToUlong(hook_address) - PtrToUlong(orig_address + 5); */
   int offset = PtrToUlong(hook_address);
-  debug("[aoe2-builtin-rms] installing hook at %p VTBL %x (%p %p)\n", orig_address, offset, hook_address, orig_address);
+  debug("[aoc-builtin-rms] installing hook at %p VTBL %x (%p %p)\n", orig_address, offset, hook_address, orig_address);
   return overwrite_bytes(orig_address, (char*)&offset, 4);
 }
 
 void aoc_builtin_rms_init(custom_map_t* new_custom_maps, size_t new_num_custom_maps) {
-  debug("[aoe2-builtin-rms] init()\n");
+  debug("[aoc-builtin-rms] init()\n");
 
   assert(custom_maps == NULL);
   assert(num_custom_maps == 0);
@@ -349,7 +349,7 @@ void aoc_builtin_rms_init(custom_map_t* new_custom_maps, size_t new_num_custom_m
 }
 
 void deinit() {
-  debug("[aoe2-builtin-rms] deinit()\n");
+  debug("[aoc-builtin-rms] deinit()\n");
   // TODO remove hooks
   custom_maps = NULL;
   num_custom_maps = 0;
