@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.4.0
+* Add API-only module, without the automatic XML loading.
+* Move config to an `aoc-builtin-rms.xml` config file to avoid polluting the UserPatch file with non-UP config.
+
 ## 0.3.0
 * Reduce logging in the release DLL.
 * Use `%[^"]` instead of `%s` for reading strings from XML attributes, behaves less strangely when whitespace is used.
