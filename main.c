@@ -14,8 +14,10 @@
 #  define debug(...)
 #endif
 
-/* location of the XML source for the active UP mod */
-static const size_t offs_game_xml = 0x7A5070;
+/* location of the short name of the active UP mod,
+ * as specified in GAME= command line parameter or hardcoded
+ * in the mod exe */
+static const size_t offs_game_name = 0x7A5058;
 
 static custom_map_t custom_maps[100] = {
   { 0 }
@@ -158,8 +160,7 @@ static int parse_map(char** read_ptr_ptr) {
 /**
  * Parse a <random-maps> section from a UserPatch mod description file.
  */
-static void parse_maps() {
-  char* mod_config = *(char**)offs_game_xml;
+static void parse_maps(char* mod_config) {
   char* read_ptr = strstr(mod_config, "<random-maps>");
   char* end_ptr = strstr(read_ptr, "</random-maps>");
   debug("[aoc-builtin-rms] range: %p %p\n", read_ptr, end_ptr);
@@ -180,9 +181,69 @@ static void parse_maps() {
   }
 }
 
+char* read_file(char* filename) {
+  FILE* file = fopen(filename, "rb");
+  if (file == NULL) return NULL;
+  fseek(file, 0, SEEK_END);
+  int size = ftell(file);
+  fseek(file, 0, SEEK_SET);
+
+  char* config = calloc(1, size + 1);
+  config[size] = '\0';
+  int read = fread(config, 1, size, file);
+  fclose(file);
+
+  printf("%d != %d\n", size, read);
+  if (size != read) {
+    free(config);
+    return NULL;
+  }
+
+  return config;
+}
+
+char* get_mod_path(char* short_name) {
+  char mod_xml_name[MAX_PATH];
+  if (sprintf(mod_xml_name, "Games\\%s.xml", short_name) < 0) return NULL;
+
+  char* config = read_file(mod_xml_name);
+  if (config == NULL) return NULL;
+
+  char* path_element = strstr(config, "<path");
+  char long_name[MAX_PATH];
+  sscanf(path_element, "<path>%250[^<]</path>", long_name);
+
+  char* mod_path = calloc(1, MAX_PATH);
+  if (mod_path == NULL) return NULL;
+
+  if (sprintf(mod_path, "Games\\%s", long_name) < 0) {
+    free(mod_path);
+    return NULL;
+  }
+
+  return mod_path;
+}
+
 static void init() {
   debug("[aoc-builtin-rms] init()\n");
-  parse_maps();
+  char* short_game_name = *(char**) offs_game_name;
+  debug("[aoc-builtin-rms] mod name: %s\n", short_game_name);
+  if (short_game_name == NULL) return;
+
+  char* game_path = get_mod_path(short_game_name);
+  debug("[aoc-builtin-rms] mod path: %s\n", game_path);
+  if (game_path == NULL) return;
+
+  char xml_path[MAX_PATH];
+  sprintf(xml_path, "%s\\aoc-builtin-rms.xml", game_path);
+  free(game_path);
+
+  debug("[aoc-builtin-rms] config path: %s\n", xml_path);
+  char* config = read_file(xml_path);
+  if (config == NULL) return;
+
+  parse_maps(config);
+  free(config);
 
   if (count_custom_maps() == 0) {
     printf("[aoc-builtin-rms] No custom maps specified, stopping.\n");

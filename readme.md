@@ -18,19 +18,15 @@ Put your mod's random maps in a .drs archive as `bina` files. The IDs don't real
 #include_drs random_map.def 54000
 ```
 
-This dll looks for a `<random-maps>` section in your mod's XML file, the same that specifies civilizations and your mod directory.
+This dll looks for an `aoc-builtin-rms.xml` configuration file in your mod's base directory (`Games\YourModName`). For example, for WololoKingdoms, the file should be in `Games\WololoKingdoms\aoc-builtin-rms.xml`.
+
+The file hould contain a `<random-maps>` top-level element, and a `<map />` element for each random map:
 
 ```xml
-<configuration ...>
-  <name>...</name>
-  <path>...</path>
-  <civilizations>
-    ...
-  </civilizations>
-  <random-maps>
-    <map id="-1" name="cenotes" string="10916" drsId="54250" />
-  </random-maps>
-</configuration>
+<?xml version="1.0" encoding="utf-8"?>
+<random-maps>
+  <map id="-1" name="cenotes" string="10916" drsId="54250" />
+</random-maps>
 ```
 
 Each map must have an `id`, a `name`, `string`, and a `drsId`.
