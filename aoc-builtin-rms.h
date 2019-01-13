@@ -6,8 +6,9 @@ typedef struct terrain_overrides {
 } terrain_overrides_t;
 
 typedef enum custom_map_type {
-  Standard,
-  RealWorld
+  Standard = 0,
+  RealWorld = 1,
+  None = -1
 } custom_map_type_t;
 
 typedef struct custom_map {

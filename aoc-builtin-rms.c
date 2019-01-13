@@ -4,9 +4,6 @@
 #include "aoc-builtin-rms.h"
 #include "hook.h"
 
-#define RMS_STANDARD 0
-#define RMS_REALWORLD 1
-
 #define TERRAIN_TEXTURE_BASE 15000
 #define TERRAIN_TEXTURE_MAX 15050
 
@@ -74,6 +71,9 @@ typedef int __thiscall (*fn_ai_define_const)(void*, char*, int);
 static const size_t offs_vtbl_map_generate = 0x638114;
 static const size_t offs_map_generate = 0x45EE10;
 static const size_t offs_load_scx = 0x40DF00;
+static const size_t offs_vtbl_launch_game = 0x63E0B0;
+static const size_t offs_launch_game = 0x4FF390;
+typedef void __thiscall (*fn_launch_game)(void*, int, int, int, int, int, int, int, int, int);
 typedef int __thiscall (*fn_map_generate)(void*, int, int, char*, void*, int);
 typedef int __thiscall (*fn_load_scx)(void*, char*, int, void*);
 
@@ -91,6 +91,7 @@ static fn_text_get_value aoc_text_get_value = 0;
 static fn_text_set_rollover_id aoc_text_set_rollover_id = 0;
 static fn_ai_define_symbol aoc_ai_define_symbol = 0;
 static fn_ai_define_const aoc_ai_define_const = 0;
+static fn_launch_game aoc_launch_game = 0;
 static fn_map_generate aoc_map_generate = 0;
 static fn_load_scx aoc_load_scx = 0;
 static fn_texture_create aoc_texture_create = 0;
@@ -99,6 +100,11 @@ static fn_texture_destroy aoc_texture_destroy = 0;
 static int get_map_type() {
   int base_offset = *(int*)offs_game_instance;
   return *(int*)(base_offset + offs_map_type);
+}
+
+static void set_map_type(int map_type) {
+  int base_offset = *(int*)offs_game_instance;
+  *(int*)(base_offset + offs_map_type) = map_type;
 }
 
 static void* get_world() {
@@ -120,20 +126,20 @@ static void __thiscall dropdown_add_line_hook(void* dd, int label, int value) {
     return;
   }
 
-  int additional_type = -1;
+  custom_map_type_t additional_type = None;
   if (is_last_map_dropdown_entry(label, value))
-    additional_type = RMS_STANDARD;
+    additional_type = Standard;
   if (is_last_real_world_dropdown_entry(label, value))
-    additional_type = RMS_REALWORLD;
+    additional_type = RealWorld;
 
-  if (additional_type !=  -1) {
+  if (additional_type != None) {
     dbg_print("called hooked dropdown_add_line %p %p, %d %d\n", dd, text_panel, label, value);
   }
 
   // Original
   aoc_text_add_line(text_panel, label, value);
 
-  if (additional_type != -1) {
+  if (additional_type != None) {
     for (int i = 0; i < num_custom_maps; i++) {
       if (custom_maps[i].type != additional_type) continue;
       aoc_text_add_line(text_panel,
@@ -188,6 +194,41 @@ static void apply_terrain_overrides(terrain_overrides_t* overrides) {
       replace_terrain_texture(texture, i, new_texture_id);
     }
   }
+}
+
+static int builtin_real_world_map_ids[] = { 34, 35, 36, 37, 38, 39, 40, 41, 42, 43 };
+static int num_builtin_real_world_maps = sizeof(builtin_real_world_map_ids) / sizeof(int);
+static int count_real_world_maps() {
+  int result = num_builtin_real_world_maps;
+  for (int i = 0; i < num_custom_maps; i++) {
+    if (custom_maps[i].type == RealWorld) {
+      result++;
+    }
+  }
+  return result;
+}
+
+// only has this many "parameters" in userpatch, i think
+// maybe can tweak this depending on the game version
+static void __thiscall launch_game_hook(void* screen, int a, int b, int c, int d, int e, int f, int g, int h, int i) {
+  if (get_map_type() == 47) {
+    dbg_print("[aoc-builtin-rms] picking full random real world map...\n");
+    int max = count_real_world_maps();
+    int pick = (rand() % max);
+    if (pick < num_builtin_real_world_maps) {
+      set_map_type(builtin_real_world_map_ids[pick]);
+    } else {
+      pick -= num_builtin_real_world_maps;
+      for (int i = 0; i < num_custom_maps; i++) {
+        if (custom_maps[i].type == RealWorld && --pick == 0) {
+          set_map_type(custom_maps[i].id);
+          break;
+        }
+      }
+    }
+  }
+
+  return aoc_launch_game(screen, a, b, c, d, e, f, g, h, i);
 }
 
 static void* current_game_info;
@@ -291,7 +332,9 @@ void aoc_builtin_rms_init(custom_map_t* new_custom_maps, size_t new_num_custom_m
   /* Stuff to make real world maps work */
   aoc_map_generate = (fn_map_generate) offs_map_generate;
   aoc_load_scx = (fn_load_scx) offs_load_scx;
+  aoc_launch_game = (fn_launch_game) offs_launch_game;
   hooks[h++] = install_vtblhook((void*) offs_vtbl_map_generate, map_generate_hook);
+  hooks[h++] = install_vtblhook((void*) offs_vtbl_launch_game, launch_game_hook);
   hooks[h] = NULL;
 }
 
