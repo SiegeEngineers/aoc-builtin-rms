@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include "aoc-builtin-rms.h"
+#include "hook.h"
 
 #define RMS_STANDARD 0
 #define RMS_REALWORLD 1
@@ -10,9 +11,9 @@
 #define TERRAIN_TEXTURE_MAX 15050
 
 #ifdef DEBUG
-#  define debug(...) printf(__VA_ARGS__)
+#  define dbg_print(...) printf("[aoc-builtin-rms] " __VA_ARGS__)
 #else
-#  define debug(...)
+#  define dbg_print(...)
 #endif
 
 static custom_map_t* custom_maps = NULL;
@@ -126,7 +127,7 @@ static void __thiscall dropdown_add_line_hook(void* dd, int label, int value) {
     additional_type = RMS_REALWORLD;
 
   if (additional_type !=  -1) {
-    debug("[aoc-builtin-rms] called hooked dropdown_add_line %p %p, %d %d\n", dd, text_panel, label, value);
+    dbg_print("called hooked dropdown_add_line %p %p, %d %d\n", dd, text_panel, label, value);
   }
 
   // Original
@@ -143,7 +144,7 @@ static void __thiscall dropdown_add_line_hook(void* dd, int label, int value) {
 }
 
 static int __thiscall text_get_map_value_hook(void* tt, int line_index) {
-  debug("[aoc-builtin-rms] called hooked text_get_map_value %p %d\n", tt, line_index);
+  dbg_print("called hooked text_get_map_value %p %d\n", tt, line_index);
   int selected_map_id = aoc_text_get_value(tt, line_index);
 
   for (int i = 0; i < num_custom_maps; i++) {
@@ -158,7 +159,7 @@ static int __thiscall text_get_map_value_hook(void* tt, int line_index) {
 }
 
 static void replace_terrain_texture(void* texture, int terrain_id, int slp_id) {
-  debug("[aoc-builtin-rms] Replacing texture for terrain #%d by SLP %d\n", terrain_id, slp_id);
+  dbg_print("Replacing texture for terrain #%d by SLP %d\n", terrain_id, slp_id);
   aoc_texture_destroy(texture);
   char name[100];
   sprintf(name, "terrain%d.shp", terrain_id);
@@ -191,7 +192,7 @@ static void apply_terrain_overrides(terrain_overrides_t* overrides) {
 
 static void* current_game_info;
 static void __thiscall map_generate_hook(void* map, int size_x, int size_y, char* name, void* game_info, int num_players) {
-  debug("[aoc-builtin-rms] called hooked map_generate %s %p\n", name, game_info);
+  dbg_print("called hooked map_generate %s %p\n", name, game_info);
   /* We need to store this to be able to load the scx file later */
   current_game_info = game_info;
   aoc_map_generate(map, size_x, size_y, name, game_info, num_players);
@@ -200,21 +201,21 @@ static void __thiscall map_generate_hook(void* map, int size_x, int size_y, char
 static char map_filename_str[MAX_PATH];
 static char scx_filename_str[MAX_PATH];
 static void* __thiscall rms_controller_hook(void* controller, char* filename, int drs_id) {
-  debug("[aoc-builtin-rms] called hooked rms_controller %s %d\n", filename, drs_id);
+  dbg_print("called hooked rms_controller %s %d\n", filename, drs_id);
   int map_type = get_map_type();
-  debug("[aoc-builtin-rms] map type: %d\n", map_type);
+  dbg_print("map type: %d\n", map_type);
   for (int i = 0; i < num_custom_maps; i++) {
     if (custom_maps[i].id == map_type) {
       sprintf(map_filename_str, "%s.rms", custom_maps[i].name);
       filename = map_filename_str;
       drs_id = custom_maps[i].drs_id;
-      debug("[aoc-builtin-rms] filename/id is now: %s %d\n", filename, drs_id);
+      dbg_print("filename/id is now: %s %d\n", filename, drs_id);
 
       apply_terrain_overrides(&custom_maps[i].terrains);
 
       if (custom_maps[i].scx_drs_id > 0) {
         sprintf(scx_filename_str, "real_world_%s.scx", custom_maps[i].name);
-        debug("[aoc-builtin-rms] real world map: loading %s %d\n",
+        dbg_print("real world map: loading %s %d\n",
             scx_filename_str, custom_maps[i].scx_drs_id);
         aoc_load_scx(get_world(),
             scx_filename_str,
@@ -235,7 +236,7 @@ static int __thiscall ai_define_map_symbol_hook(void* ai, char* name) {
     for (int i = 0; i < num_custom_maps; i++) {
       if (custom_maps[i].id == map_type) {
         name = custom_maps[i].ai_symbol_name;
-        debug("[aoc-builtin-rms] defining ai symbol: %s\n", name);
+        dbg_print("defining ai symbol: %s\n", name);
         break;
       }
     }
@@ -245,7 +246,7 @@ static int __thiscall ai_define_map_symbol_hook(void* ai, char* name) {
 
 static int __thiscall ai_define_map_const_hook(void* ai, char* name, int value) {
   for (int i = 0; i < num_custom_maps; i++) {
-    debug("[aoc-builtin-rms] defining ai const: %s = %d\n", custom_maps[i].ai_const_name, custom_maps[i].id);
+    dbg_print("defining ai const: %s = %d\n", custom_maps[i].ai_const_name, custom_maps[i].id);
     aoc_ai_define_const(ai,
         custom_maps[i].ai_const_name,
         custom_maps[i].id);
@@ -253,71 +254,16 @@ static int __thiscall ai_define_map_const_hook(void* ai, char* name, int value) 
   return aoc_ai_define_const(ai, "scenario-map", -1);
 }
 
-/**
- * Overwrite some bytes in the current process.
- * Returns TRUE if it worked, FALSE if not.
- */
-static BOOL overwrite_bytes(void* ptr, void* value, size_t size) {
-  DWORD old;
-  DWORD tmp;
-  if (!VirtualProtect(ptr, size, PAGE_EXECUTE_READWRITE, &old)) {
-    debug("[aoc-builtin-rms] Couldn't unprotect?! @ %p\n", ptr);
-    return FALSE;
-  }
-  memcpy(ptr, value, size);
-  VirtualProtect(ptr, size, old, &tmp);
-  return TRUE;
-}
-
-/**
- * Install a hook that works by JMP-ing to the new implementation.
- * This is handy for hooking existing functions, override their first bytes by a JMP and all the arguments will still be on the stack/in registries. C functions can just be used (with appropriate calling convention) as if they were called directly by the application.
- */
-static BOOL install_jmphook (void* orig_address, void* hook_address) {
-  char patch[6] = {
-    0xE9, // jmp
-    0, 0, 0, 0, // addr
-    0xC3 // ret
-  };
-  int offset = PtrToUlong(hook_address) - PtrToUlong(orig_address + 5);
-  memcpy(&patch[1], &offset, sizeof(offset));
-  debug("[aoc-builtin-rms] installing hook at %p JMP %x (%p %p)\n", orig_address, offset, hook_address, orig_address);
-  return overwrite_bytes(orig_address, patch, 6);
-}
-
-/**
- * Install a hook that works by CALL-ing to the new implementation.
- * Handy for hooking existing CALL-sites, overriding essentially just the address.
- */
-static BOOL install_callhook (void* orig_address, void* hook_address) {
-  char patch[5] = {
-    0xE8, // call
-    0, 0, 0, 0 // addr
-  };
-  int offset = PtrToUlong(hook_address) - PtrToUlong(orig_address + 5);
-  memcpy(&patch[1], &offset, sizeof(offset));
-  debug("[aoc-builtin-rms] installing hook at %p CALL %x (%p %p)\n", orig_address, offset, hook_address, orig_address);
-  return overwrite_bytes(orig_address, patch, 5);
-}
-
-/**
- * Install a hook that works by overriding a pointer in a vtable.
- * Handy for hooking class methods.
- */
-static BOOL install_vtblhook (void* orig_address, void* hook_address) {
-  /* int offset = PtrToUlong(hook_address) - PtrToUlong(orig_address + 5); */
-  int offset = PtrToUlong(hook_address);
-  debug("[aoc-builtin-rms] installing hook at %p VTBL %x (%p %p)\n", orig_address, offset, hook_address, orig_address);
-  return overwrite_bytes(orig_address, (char*)&offset, 4);
-}
-
+hook_t hooks[20];
 void aoc_builtin_rms_init(custom_map_t* new_custom_maps, size_t new_num_custom_maps) {
-  debug("[aoc-builtin-rms] init()\n");
+  dbg_print("init()\n");
 
   assert(custom_maps == NULL);
   assert(num_custom_maps == 0);
   custom_maps = new_custom_maps;
   num_custom_maps = new_num_custom_maps;
+
+  int h = 0; // hooks counter
 
   /* Stuff to display custom maps in the dropdown menus */
   aoc_dropdown_add_line = (fn_dropdown_add_line) offs_dropdown_add_line;
@@ -325,8 +271,8 @@ void aoc_builtin_rms_init(custom_map_t* new_custom_maps, size_t new_num_custom_m
   aoc_text_add_line = (fn_text_add_line) offs_text_add_line;
   aoc_text_get_value = (fn_text_get_value) offs_text_get_value;
   aoc_text_set_rollover_id = (fn_text_set_rollover_id) offs_text_set_rollover_id;
-  install_jmphook((void*) offs_dropdown_add_line, dropdown_add_line_hook);
-  install_callhook((void*) offs_text_get_map_value, text_get_map_value_hook);
+  hooks[h++] = install_jmphook((void*) offs_dropdown_add_line, dropdown_add_line_hook);
+  hooks[h++] = install_callhook((void*) offs_text_get_map_value, text_get_map_value_hook);
 
   /* Stuff to override terrain textures */
   aoc_texture_create = (fn_texture_create) offs_texture_create;
@@ -334,23 +280,28 @@ void aoc_builtin_rms_init(custom_map_t* new_custom_maps, size_t new_num_custom_m
 
   /* Stuff to resolve the custom map ID to a DRS file */
   aoc_rms_controller_constructor = (fn_rms_controller_constructor) offs_rms_controller_constructor;
-  install_callhook((void*) offs_rms_controller, rms_controller_hook);
+  hooks[h++] = install_callhook((void*) offs_rms_controller, rms_controller_hook);
 
   /* Stuff to add AI constants */
   aoc_ai_define_symbol = (fn_ai_define_symbol) offs_ai_define_symbol;
   aoc_ai_define_const = (fn_ai_define_const) offs_ai_define_const;
-  install_callhook((void*) offs_ai_define_map_symbol, ai_define_map_symbol_hook);
-  install_callhook((void*) offs_ai_define_map_const, ai_define_map_const_hook);
+  hooks[h++] = install_callhook((void*) offs_ai_define_map_symbol, ai_define_map_symbol_hook);
+  hooks[h++] = install_callhook((void*) offs_ai_define_map_const, ai_define_map_const_hook);
 
   /* Stuff to make real world maps work */
   aoc_map_generate = (fn_map_generate) offs_map_generate;
   aoc_load_scx = (fn_load_scx) offs_load_scx;
-  install_vtblhook((void*) offs_vtbl_map_generate, map_generate_hook);
+  hooks[h++] = install_vtblhook((void*) offs_vtbl_map_generate, map_generate_hook);
+  hooks[h] = NULL;
 }
 
 void deinit() {
-  debug("[aoc-builtin-rms] deinit()\n");
-  // TODO remove hooks
+  dbg_print("deinit()\n");
+
+  for (int h = 0; hooks[h] != NULL; h++) {
+    revert_hook(hooks[h]);
+  }
+
   custom_maps = NULL;
   num_custom_maps = 0;
 }

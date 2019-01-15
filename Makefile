@@ -16,7 +16,7 @@ clean:
 
 .PHONY: all clean
 
-aoc-builtin-rms-api.dll: aoc-builtin-rms.c
+aoc-builtin-rms-api.dll: aoc-builtin-rms.c hook.c
 	$(CC) -o $@ -Wall -m32 $(FLAGS) -shared $^
-aoc-builtin-rms.dll: aoc-builtin-rms.c main.c
+aoc-builtin-rms.dll: aoc-builtin-rms.c hook.c main.c
 	$(CC) -o $@ -Wall -m32 $(FLAGS) -shared $^
