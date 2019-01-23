@@ -2,9 +2,6 @@
 #include <stdio.h>
 #include "aoc-builtin-rms.h"
 
-#define RMS_STANDARD 0
-#define RMS_REALWORLD 1
-
 #define TERRAIN_TEXTURE_BASE 15000
 #define TERRAIN_TEXTURE_MAX 15050
 
@@ -74,7 +71,7 @@ static int parse_map(char** read_ptr_ptr) {
     .description = -1,
     .ai_const_name = NULL,
     .ai_symbol_name = NULL,
-    .type = RMS_STANDARD,
+    .type = Standard,
     .scx_drs_id = -1
   };
   for (int i = 0; i < 50; i++) {
@@ -115,7 +112,7 @@ static int parse_map(char** read_ptr_ptr) {
   }
 
   if (map.scx_drs_id > 0) {
-    map.type = RMS_REALWORLD;
+    map.type = RealWorld;
   }
 
   char* description_ptr = strstr(read_ptr, "description=\"");
@@ -143,7 +140,7 @@ static int parse_map(char** read_ptr_ptr) {
   // Derive ai symbol name: uppercase name suffixed with -MAP,
   // with REAL-WORLD- prefix for real world maps
   char symbol_name[100];
-  int symbol_len = sprintf(symbol_name, map.type == RMS_REALWORLD ? "REAL-WORLD-%s-MAP" : "%s-MAP", name);
+  int symbol_len = sprintf(symbol_name, map.type == RealWorld ? "REAL-WORLD-%s-MAP" : "%s-MAP", name);
   CharUpperBuffA(symbol_name, symbol_len);
   map.ai_symbol_name = calloc(1, symbol_len + 1);
   strcpy(map.ai_symbol_name, symbol_name);

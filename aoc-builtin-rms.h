@@ -5,6 +5,11 @@ typedef struct terrain_overrides {
   int terrains[50];
 } terrain_overrides_t;
 
+typedef enum custom_map_type {
+  Standard,
+  RealWorld
+} custom_map_type_t;
+
 typedef struct custom_map {
   /* Internal ID of the map--stored as an int but many places in game assume it's a single byte
    * so this should not exceed 255 */
@@ -22,7 +27,7 @@ typedef struct custom_map {
   /* DRS ID of the map */
   int drs_id;
   /* Kind of map (standard/real world) */
-  char type;
+  custom_map_type_t type;
   /* DRS ID of the scenario if a real world map (not yet supported) */
   int scx_drs_id;
   /* Custom terrain texture IDs */
