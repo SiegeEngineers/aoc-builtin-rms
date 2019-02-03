@@ -11,10 +11,11 @@
 #  define debug(...)
 #endif
 
-/* location of the short name of the active UP mod,
- * as specified in GAME= command line parameter or hardcoded
- * in the mod exe */
-static const size_t offs_game_name = 0x7A5058;
+/**
+ * Location of the directory name of the active UP mod.
+ */
+static const size_t offs_mod_name = 0x7A5058;
+static const size_t offs_mod_dir = 0x7A506C;
 
 static custom_map_t custom_maps[100] = {
   { 0 }
@@ -199,41 +200,19 @@ char* read_file(char* filename) {
   return config;
 }
 
-char* get_mod_path(char* short_name) {
-  char mod_xml_name[MAX_PATH];
-  if (sprintf(mod_xml_name, "Games\\%s.xml", short_name) < 0) return NULL;
-
-  char* config = read_file(mod_xml_name);
-  if (config == NULL) return NULL;
-
-  char* path_element = strstr(config, "<path");
-  char long_name[MAX_PATH];
-  sscanf(path_element, "<path>%250[^<]</path>", long_name);
-
-  char* mod_path = calloc(1, MAX_PATH);
-  if (mod_path == NULL) return NULL;
-
-  if (sprintf(mod_path, "Games\\%s", long_name) < 0) {
-    free(mod_path);
-    return NULL;
-  }
-
-  return mod_path;
-}
-
 static void init() {
   debug("[aoc-builtin-rms] init()\n");
-  char* short_game_name = *(char**) offs_game_name;
-  debug("[aoc-builtin-rms] mod name: %s\n", short_game_name);
-  if (short_game_name == NULL) return;
+  char* mod_name = *(char**) offs_mod_name;
+  debug("[aoc-builtin-rms] mod name: %s\n", mod_name);
+  if (mod_name == NULL) return;
 
-  char* game_path = get_mod_path(short_game_name);
-  debug("[aoc-builtin-rms] mod path: %s\n", game_path);
-  if (game_path == NULL) return;
+  char* mod_path = *(char**) offs_mod_dir;
+  debug("[aoc-builtin-rms] mod path: %s\n", mod_path);
+  if (mod_path == NULL) return;
 
   char xml_path[MAX_PATH];
-  sprintf(xml_path, "%s\\aoc-builtin-rms.xml", game_path);
-  free(game_path);
+  // mod_path includes trailing slash
+  sprintf(xml_path, "%saoc-builtin-rms.xml", mod_path);
 
   debug("[aoc-builtin-rms] config path: %s\n", xml_path);
   char* config = read_file(xml_path);
