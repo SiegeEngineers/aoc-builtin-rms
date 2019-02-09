@@ -1,5 +1,6 @@
 #include <windows.h>
 #include <stdio.h>
+#include "ezxml.h"
 #include "aoc-builtin-rms.h"
 
 #define TERRAIN_TEXTURE_BASE 15000
@@ -37,9 +38,9 @@ static size_t count_custom_maps() {
 #define ERR_TOO_BIG_ID 5
 #define ERR_TOO_BIG_TERRAIN 6
 
-static int parse_map_terrain_overrides(char* source, terrain_overrides_t* out) {
-  char* read_ptr = source;
-  char* end_ptr = strchr(source, '\0');
+static int parse_map_terrain_overrides(const char* source, terrain_overrides_t* out) {
+  const char* read_ptr = source;
+  const char* end_ptr = strchr(source, '\0');
 
   do {
     int orig = 0;
@@ -60,11 +61,9 @@ static int parse_map_terrain_overrides(char* source, terrain_overrides_t* out) {
 }
 
 /**
- * Parse a <map /> XML element from the string pointed to by `read_ptr_ptr`.
- * The pointer in `read_ptr_ptr` will point past the end of the <map/> element
- * after this function.
+ * Parse a <map /> XML element.
  */
-static int parse_map(char** read_ptr_ptr) {
+static int parse_map(ezxml_t node) {
   custom_map_t map = {
     .id = 0,
     .name = NULL,
@@ -79,53 +78,44 @@ static int parse_map(char** read_ptr_ptr) {
     map.terrains.terrains[i] = -1;
   }
 
-  char* read_ptr = *read_ptr_ptr;
-  char* end_ptr = strstr(read_ptr, "/>");
-  *read_ptr_ptr = end_ptr + 2;
-
-  char* id_ptr = strstr(read_ptr, "id=\"");
-  if (id_ptr == NULL || id_ptr > end_ptr) { return ERR_NO_ID; }
-  sscanf(id_ptr, "id=\"%d\"", &map.id);
+  const char* id = ezxml_attr(node, "id");
+  if (id == NULL) { return ERR_NO_ID; }
+  map.id = atoi(id);
   if (map.id < 0) {
     map.id = 255 + (char)map.id;
   }
   if (map.id > 255) { return ERR_TOO_BIG_ID; }
 
-  char* name_ptr = strstr(read_ptr, "name=\"");
-  if (name_ptr == NULL || name_ptr > end_ptr) { return ERR_NO_NAME; }
-  char name[80];
-  sscanf(name_ptr, "name=\"%79[^\"]\"", name);
-  if (strlen(name) < 1) { return ERR_NO_NAME; }
+  const char* name = ezxml_attr(node, "name");
+  if (name == NULL || strlen(name) < 1) { return ERR_NO_NAME; }
   map.name = calloc(1, strlen(name) + 1);
   strcpy(map.name, name);
 
-  char* string_ptr = strstr(read_ptr, "string=\"");
-  if (string_ptr == NULL || string_ptr > end_ptr) { return ERR_NO_STRING_ID; }
-  sscanf(string_ptr, "string=\"%d\"", &map.string);
+  const char* string = ezxml_attr(node, "string");
+  if (string == NULL) { return ERR_NO_STRING_ID; }
+  map.string = atoi(string);
 
-  char* drs_id_ptr = strstr(read_ptr, "drsId=\"");
-  if (drs_id_ptr == NULL || drs_id_ptr > end_ptr) { return ERR_NO_DRS_ID; }
-  sscanf(drs_id_ptr, "drsId=\"%d\"", &map.drs_id);
+  const char* drs_id = ezxml_attr(node, "drsId");
+  if (drs_id == NULL) { return ERR_NO_DRS_ID; }
+  map.drs_id = atoi(drs_id);
 
-  char* scx_drs_id_ptr = strstr(read_ptr, "scxDrsId=\"");
-  if (scx_drs_id_ptr != NULL && scx_drs_id_ptr < end_ptr) {
-    sscanf(scx_drs_id_ptr, "scxDrsId=\"%d\"", &map.scx_drs_id);
+  const char* scx_drs_id = ezxml_attr(node, "scxDrsId");
+  if (scx_drs_id != NULL) {
+    map.scx_drs_id = atoi(scx_drs_id);
   }
 
   if (map.scx_drs_id > 0) {
     map.type = RealWorld;
   }
 
-  char* description_ptr = strstr(read_ptr, "description=\"");
-  if (description_ptr != NULL && description_ptr < end_ptr) {
-    sscanf(description_ptr, "description=\"%d\"", &map.description);
+  const char* description = ezxml_attr(node, "description");
+  if (description != NULL) {
+    map.description = atoi(description);
   }
 
-  char* override_ptr = strstr(read_ptr, "terrainOverrides=\"");
-  char override_str[501];
-  if (override_ptr != NULL && override_ptr < end_ptr) {
-    sscanf(override_ptr, "terrainOverrides=\"%500[^\"]\"", override_str);
-    int result = parse_map_terrain_overrides(override_str, &map.terrains);
+  const char* override = ezxml_attr(node, "terrainOverrides");
+  if (override != NULL) {
+    int result = parse_map_terrain_overrides(override, &map.terrains);
     if (result != 0) {
       return result;
     }
@@ -150,23 +140,30 @@ static int parse_map(char** read_ptr_ptr) {
   size_t i = count_custom_maps();
   custom_maps[i] = map;
   custom_maps[i + 1] = (custom_map_t) {0};
-
-  *read_ptr_ptr = end_ptr + 2;
   return 0;
 }
 
 /**
- * Parse a <random-maps> section from a UserPatch mod description file.
+ * Parse the maps out of an aoc-builtin-rms.xml file.
  */
 static void parse_maps(char* mod_config) {
-  char* read_ptr = strstr(mod_config, "<random-maps>");
-  char* end_ptr = strstr(read_ptr, "</random-maps>");
-  debug("[aoc-builtin-rms] range: %p %p\n", read_ptr, end_ptr);
+  char err_message[256];
+  ezxml_t document = ezxml_parse_str(mod_config, strlen(mod_config));
+  if (!document) {
+    MessageBoxA(NULL, "Could not parse aoc-builtin-rms.xml, please check its syntax", NULL, 0);
+    return;
+  }
 
-  if (read_ptr == NULL || end_ptr == NULL) return;
+  const char* root_name = ezxml_name(document);
+  if (root_name == NULL || strncmp(root_name, "random-maps", 11) != 0) {
+    sprintf(err_message, "The top-level element must be <random-maps>, got <%s>", root_name);
+    MessageBoxA(NULL, err_message, NULL, 0);
+    ezxml_free(document);
+    return;
+  }
 
-  while ((read_ptr = strstr(read_ptr, "<map")) && read_ptr < end_ptr) {
-    int err = parse_map(&read_ptr);
+  for (ezxml_t map = ezxml_child(document, "map"); map; map = ezxml_next(map)) {
+    int err = parse_map(map);
     switch (err) {
       case ERR_NO_ID: MessageBoxA(NULL, "A <map /> is missing an id attribute", NULL, 0); break;
       case ERR_NO_NAME: MessageBoxA(NULL, "A <map /> is missing a name attribute", NULL, 0); break;
@@ -177,6 +174,7 @@ static void parse_maps(char* mod_config) {
       default: break;
     }
   }
+  ezxml_free(document);
 }
 
 char* read_file(char* filename) {

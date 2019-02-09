@@ -12,11 +12,14 @@ endif
 all: aoc-builtin-rms.dll aoc-builtin-rms-api.dll
 
 clean:
-	rm -f aoc-builtin-rms.dll aoc-builtin-rms-api.dll
+	rm -f aoc-builtin-rms.dll aoc-builtin-rms-api.dll ezxml.o
 
 .PHONY: all clean
 
+ezxml.o: ezxml.c ezxml.h
+	$(CC) -c -o $@ -DEZXML_NOMMAP -Wall -m32 $(FLAGS) ezxml.c
+
 aoc-builtin-rms-api.dll: aoc-builtin-rms.c hook.c
 	$(CC) -o $@ -Wall -m32 $(FLAGS) -shared $^
-aoc-builtin-rms.dll: aoc-builtin-rms.c hook.c main.c
+aoc-builtin-rms.dll: aoc-builtin-rms.c hook.c ezxml.o main.c
 	$(CC) -o $@ -Wall -m32 $(FLAGS) -shared $^
