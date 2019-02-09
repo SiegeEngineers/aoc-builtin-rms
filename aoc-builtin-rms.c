@@ -4,9 +4,6 @@
 #include "aoc-builtin-rms.h"
 #include "hook.h"
 
-#define RMS_STANDARD 0
-#define RMS_REALWORLD 1
-
 #define TERRAIN_TEXTURE_BASE 15000
 #define TERRAIN_TEXTURE_MAX 15050
 
@@ -16,6 +13,8 @@
 #  define dbg_print(...)
 #endif
 
+static map_section_t* custom_sections = NULL;
+static size_t num_custom_sections = 0;
 static custom_map_t* custom_maps = NULL;
 static size_t num_custom_maps = 0;
 
@@ -122,9 +121,9 @@ static void __thiscall dropdown_add_line_hook(void* dd, int label, int value) {
 
   int additional_type = -1;
   if (is_last_map_dropdown_entry(label, value))
-    additional_type = RMS_STANDARD;
+    additional_type = Standard;
   if (is_last_real_world_dropdown_entry(label, value))
-    additional_type = RMS_REALWORLD;
+    additional_type = RealWorld;
 
   if (additional_type !=  -1) {
     dbg_print("called hooked dropdown_add_line %p %p, %d %d\n", dd, text_panel, label, value);
@@ -255,11 +254,17 @@ static int __thiscall ai_define_map_const_hook(void* ai, char* name, int value) 
 }
 
 hook_t hooks[20];
-void aoc_builtin_rms_init(custom_map_t* new_custom_maps, size_t new_num_custom_maps) {
+void aoc_builtin_rms_init(
+    map_section_t* new_custom_sections, size_t new_num_custom_sections,
+    custom_map_t* new_custom_maps, size_t new_num_custom_maps) {
   dbg_print("init()\n");
 
+  assert(custom_sections == NULL);
+  assert(num_custom_sections == 0);
   assert(custom_maps == NULL);
   assert(num_custom_maps == 0);
+  custom_sections = new_custom_sections;
+  num_custom_sections = new_num_custom_sections;
   custom_maps = new_custom_maps;
   num_custom_maps = new_num_custom_maps;
 
