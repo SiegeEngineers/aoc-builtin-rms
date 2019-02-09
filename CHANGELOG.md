@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.5.0
+* Refactor to use hooking library `hook.c`.
+* Fix an issue where aoc-builtin-rms could look for a config file in the wrong mod directory.
+
 ## 0.4.0
 * Add API-only module, without the automatic XML loading.
 * Move config to an `aoc-builtin-rms.xml` config file to avoid polluting the UserPatch file with non-UP config.
