@@ -8,7 +8,8 @@ typedef struct terrain_overrides {
 typedef enum custom_map_type {
   Standard = 0,
   RealWorld = 1,
-  CustomSection = 2
+  Custom = 2,
+  CustomSection = 4
 } custom_map_type_t;
 
 typedef struct custom_map {
@@ -38,6 +39,8 @@ typedef struct custom_map {
 typedef struct map_section {
   /* String ID containing the localised name of the map style. */
   int name;
+  /* ID of the default map selection for this style. */
+  int default_map;
 } map_section_t;
 
 void aoc_builtin_rms_init(

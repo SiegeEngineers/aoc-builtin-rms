@@ -174,6 +174,12 @@ static parse_section_result_t parse_section(ezxml_t node) {
       return NoCustomName;
     }
     custom_sections[i].name = atoi(name);
+    const char* default_map = ezxml_attr(node, "default");
+    if (default_map == NULL) {
+      custom_sections[i].default_map = -1;
+    } else {
+      custom_sections[i].default_map = atoi(default_map);
+    }
     type = CustomSection + i;
   } else {
     return InvalidTag;
@@ -188,6 +194,12 @@ static parse_section_result_t parse_section(ezxml_t node) {
       case NoDrsId: MessageBoxA(NULL, "A <map /> is missing a drsId attribute", NULL, 0); break;
       case TooBigId: MessageBoxA(NULL, "A <map />'s map ID is too large: must be at most 255", NULL, 0); break;
       case TooBigTerrain: MessageBoxA(NULL, "A <map /> has an incorrect terrainOverrides attribute. Only terrains 15000-15050 can be overridden", NULL, 0); break;
+      case MapOk:
+        if (custom_sections[count_custom_sections() - 1].default_map == -1) {
+          custom_sections[count_custom_sections() - 1].default_map =
+            custom_maps[count_custom_maps() - 1].id;
+        }
+        break;
       default: break;
     }
   }

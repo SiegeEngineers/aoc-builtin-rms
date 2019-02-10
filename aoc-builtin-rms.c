@@ -8,7 +8,7 @@
 #define TERRAIN_TEXTURE_MAX 15050
 
 #ifdef DEBUG
-#  define dbg_print(...) printf("[aoc-builtin-rms] " __VA_ARGS__)
+#  define dbg_print(...) printf("[aoc-builtin-rms] " __VA_ARGS__); fflush(stdout)
 #else
 #  define dbg_print(...)
 #endif
@@ -47,6 +47,12 @@ typedef void* __thiscall (*fn_rms_controller_constructor)(void*, char*, int);
 /* offsets for hooking the builtin random map file list */
 
 static const size_t offs_dropdown_add_line = 0x550870;
+static const size_t offs_dropdown_insert_line = 0x5508D0;
+static const size_t offs_dropdown_set_line_by_id = 0x5507E0;
+static const size_t offs_dropdown_get_id = 0x5509C0;
+static const size_t offs_dropdown_empty_list = 0x550A00;
+static const size_t offs_dropdown_set_sorted = 0x550720;
+static const size_t offs_set_map_type_rollover_ids = 0x5086B0;
 static const size_t offs_text_add_line = 0x5473F0;
 static const size_t offs_dropdown_add_string = 0x550840;
 /* location of fn that gets the ID value of a text panel row */
@@ -56,6 +62,12 @@ static const size_t offs_text_set_rollover_id = 0x547C20;
 /* location of the call to text_get_value that happens when applying rollover description IDs */
 static const size_t offs_text_get_map_value = 0x5086E1;
 typedef int __thiscall (*fn_dropdown_add_line)(void*, int, int);
+typedef int __thiscall (*fn_dropdown_insert_line)(void*, int, int, int);
+typedef int __thiscall (*fn_dropdown_set_line_by_id)(void*, int);
+typedef custom_map_type_t __thiscall (*fn_dropdown_get_id)(void*);
+typedef int __thiscall (*fn_dropdown_empty_list)(void*);
+typedef int __thiscall (*fn_dropdown_set_sorted)(void*, int);
+typedef int __thiscall (*fn_set_map_type_rollover_ids)(void*);
 typedef int __thiscall (*fn_text_add_line)(void*, int, int);
 typedef int __thiscall (*fn_dropdown_add_string)(void*, char*, int);
 typedef int __thiscall (*fn_text_get_value)(void*, int);
@@ -82,22 +94,39 @@ static const size_t offs_texture_destroy = 0x4DB110;
 typedef void* __thiscall (*fn_texture_create)(void*, char*, int);
 typedef void __thiscall (*fn_texture_destroy)(void*);
 
-static fn_rms_controller_constructor aoc_rms_controller_constructor = 0;
-static fn_dropdown_add_line aoc_dropdown_add_line = 0;
-static fn_text_add_line aoc_text_add_line = 0;
-static fn_dropdown_add_string aoc_dropdown_add_string = 0;
-static fn_text_get_value aoc_text_get_value = 0;
-static fn_text_set_rollover_id aoc_text_set_rollover_id = 0;
-static fn_ai_define_symbol aoc_ai_define_symbol = 0;
-static fn_ai_define_const aoc_ai_define_const = 0;
-static fn_map_generate aoc_map_generate = 0;
-static fn_load_scx aoc_load_scx = 0;
-static fn_texture_create aoc_texture_create = 0;
-static fn_texture_destroy aoc_texture_destroy = 0;
+static fn_rms_controller_constructor aoc_rms_controller_constructor = (fn_rms_controller_constructor) offs_rms_controller_constructor;
+static fn_dropdown_add_line aoc_dropdown_add_line = (fn_dropdown_add_line) offs_dropdown_add_line;
+static fn_dropdown_insert_line aoc_dropdown_insert_line = (fn_dropdown_insert_line) offs_dropdown_insert_line;
+static fn_dropdown_set_line_by_id aoc_dropdown_set_line_by_id = (fn_dropdown_set_line_by_id) offs_dropdown_set_line_by_id;
+static fn_dropdown_get_id aoc_dropdown_get_id = (fn_dropdown_get_id) offs_dropdown_get_id;
+static fn_dropdown_empty_list aoc_dropdown_empty_list = (fn_dropdown_empty_list) offs_dropdown_empty_list;
+static fn_dropdown_set_sorted aoc_dropdown_set_sorted = (fn_dropdown_set_sorted) offs_dropdown_set_sorted;
+static fn_set_map_type_rollover_ids aoc_set_map_type_rollover_ids = (fn_set_map_type_rollover_ids) offs_set_map_type_rollover_ids;
+static fn_text_add_line aoc_text_add_line = (fn_text_add_line) offs_text_add_line;
+static fn_dropdown_add_string aoc_dropdown_add_string = (fn_dropdown_add_string) offs_dropdown_add_string;
+static fn_text_get_value aoc_text_get_value = (fn_text_get_value) offs_text_get_value;
+static fn_text_set_rollover_id aoc_text_set_rollover_id = (fn_text_set_rollover_id) offs_text_set_rollover_id;
+static fn_ai_define_symbol aoc_ai_define_symbol = (fn_ai_define_symbol) offs_ai_define_symbol;
+static fn_ai_define_const aoc_ai_define_const = (fn_ai_define_const) offs_ai_define_const;
+static fn_map_generate aoc_map_generate = (fn_map_generate) offs_map_generate;
+static fn_load_scx aoc_load_scx = (fn_load_scx) offs_load_scx;
+/* Stuff to override terrain textures */
+static fn_texture_create aoc_texture_create = (fn_texture_create) offs_texture_create;
+static fn_texture_destroy aoc_texture_destroy = (fn_texture_destroy) offs_texture_destroy;
 
 static int get_map_type() {
   int base_offset = *(int*)offs_game_instance;
   return *(int*)(base_offset + offs_map_type);
+}
+
+static custom_map_type_t get_map_style() {
+  int map_type = get_map_type();
+  for (int i = 0; i < num_custom_maps; i++) {
+    if (custom_maps[i].id == map_type) {
+      return custom_maps[i].type;
+    }
+  }
+  return Standard;
 }
 
 static void* get_world() {
@@ -105,11 +134,29 @@ static void* get_world() {
   return *(void**)(base_offset + offs_world);
 }
 
+static char is_last_type_dropdown_entry(int label, int value) {
+  return label == 13543 && value == 1; /* Real World */
+}
 static char is_last_map_dropdown_entry(int label, int value) {
   return label == 10894 && value == 27; /* Yucatan */
 }
 static char is_last_real_world_dropdown_entry(int label, int value) {
   return label == 13553 && value == 43; /* Byzantium */
+}
+
+static void __thiscall append_custom_maps(void* dd, int type) {
+  dbg_print("append custom maps of type %d\n", type);
+  void* text_panel = *(void**)((size_t) dd + 256);
+  if (text_panel == NULL) {
+    return;
+  }
+
+  for (int i = 0; i < num_custom_maps; i++) {
+    if (custom_maps[i].type != type) continue;
+    aoc_text_add_line(text_panel,
+        custom_maps[i].string,
+        custom_maps[i].id);
+  }
 }
 
 static void __thiscall dropdown_add_line_hook(void* dd, int label, int value) {
@@ -125,37 +172,154 @@ static void __thiscall dropdown_add_line_hook(void* dd, int label, int value) {
   if (is_last_real_world_dropdown_entry(label, value))
     additional_type = RealWorld;
 
+  // special: append custom sections to map style dropdown
+  if (is_last_type_dropdown_entry(label, value))
+    additional_type = -CustomSection;
+
   if (additional_type !=  -1) {
-    dbg_print("called hooked dropdown_add_line %p %p, %d %d\n", dd, text_panel, label, value);
+    dbg_print("called hooked dropdown_add_line %p %p, %d %d, add %d\n", dd, text_panel, label, value, additional_type);
   }
 
   // Original
   aoc_text_add_line(text_panel, label, value);
 
-  if (additional_type != -1) {
-    for (int i = 0; i < num_custom_maps; i++) {
-      if (custom_maps[i].type != additional_type) continue;
+  if (additional_type == -CustomSection) {
+    for (int i = 0; i < num_custom_sections; i++) {
       aoc_text_add_line(text_panel,
-          custom_maps[i].string,
-          custom_maps[i].id);
+          custom_sections[i].name,
+          CustomSection + i);
     }
+  } else if (additional_type >= 0) {
+    append_custom_maps(dd, additional_type);
   }
 }
 
 static int __thiscall text_get_map_value_hook(void* tt, int line_index) {
-  dbg_print("called hooked text_get_map_value %p %d\n", tt, line_index);
+  // dbg_print("called hooked text_get_map_value %p %d\n", tt, line_index);
   int selected_map_id = aoc_text_get_value(tt, line_index);
 
-  for (int i = 0; i < num_custom_maps; i++) {
-    if (custom_maps[i].id != selected_map_id) continue;
-    if (custom_maps[i].description != -1) {
-      aoc_text_set_rollover_id(tt, line_index, custom_maps[i].description);
-      return 0; /* doesn't have a hardcoded ID so we won't call set_rollover_id twice */
+  if (line_index == 0) {
+    for (int i = 0; i < num_custom_maps; i++) {
+      if (custom_maps[i].id != selected_map_id) continue;
+      if (custom_maps[i].description != -1) {
+        aoc_text_set_rollover_id(tt, line_index, custom_maps[i].description);
+        return 0; /* doesn't have a hardcoded ID so we won't call set_rollover_id twice */
+      }
     }
   }
 
   return selected_map_id;
 }
+
+static void append_default_real_world_maps(void* dd) {
+  void* text_panel = *(void**)((size_t) dd + 256);
+  if (text_panel == NULL) {
+    return;
+  }
+
+  int game_type = 0;
+  int is_multiplayer = 1;
+
+  aoc_dropdown_set_sorted(dd, 1);
+  aoc_text_add_line(text_panel, 10875, 9);
+  aoc_text_add_line(text_panel, 10895, 29);
+  aoc_text_add_line(text_panel, 10876, 10);
+  aoc_text_add_line(text_panel, 10877, 11);
+  aoc_text_add_line(text_panel, 10878, 12);
+  aoc_text_add_line(text_panel, 10879, 13);
+  aoc_text_add_line(text_panel, 10880, 14);
+  aoc_text_add_line(text_panel, 10881, 15);
+  if (game_type != 7) {
+    aoc_text_add_line(text_panel, 10882, 16);
+  }
+  aoc_text_add_line(text_panel, 10898, 32);
+  aoc_text_add_line(text_panel, 10883, 17);
+  aoc_text_add_line(text_panel, 10884, 18);
+  aoc_text_add_line(text_panel, 10885, 19);
+  aoc_text_add_line(text_panel, 10886, 20);
+  aoc_text_add_line(text_panel, 10887, 21);
+  aoc_text_add_line(text_panel, 10892, 26);
+  if (game_type != 7) {
+    aoc_text_add_line(text_panel, 10901, 33);
+  }
+  aoc_text_add_line(text_panel, 10897, 31);
+  aoc_text_add_line(text_panel, 10888, 22);
+  aoc_text_add_line(text_panel, 10893, 28);
+  aoc_text_add_line(text_panel, 10891, 25);
+  aoc_text_add_line(text_panel, 10889, 23);
+  aoc_text_add_line(text_panel, 10894, 27);
+  append_custom_maps(dd, RealWorld);
+
+  aoc_dropdown_set_sorted(dd, 0);
+
+  aoc_dropdown_insert_line(dd, 0, 10890, 24);
+  aoc_dropdown_insert_line(dd, 1, 10899, 45);
+  if (is_multiplayer) {
+    aoc_dropdown_insert_line(dd, 2, 10902, 48);
+  }
+}
+
+static int __thiscall set_map_by_id_hook(void* dd, int id) {
+  dbg_print("called set_map_by_id_hook %p %d, map style is %d\n", dd, id, get_map_style());
+
+  custom_map_type_t type = get_map_style();
+  // This works automatically, because this dropdown is populated
+  // if the map ID is _not_ any of the real world map IDs or the Custom map ID.
+  // Thus, new modded map IDs will have been added to the dropdown already.
+  if (type == Standard) {
+    return aoc_dropdown_set_line_by_id(dd, id);
+  }
+
+  // For other map IDs, the dropdown currently contains a list of Standard type maps,
+  // and the Map Style dropdown was reset to Standard.
+
+  // Reset the map style dropdown to the actually selected one.
+  // (`dd` contains a pointer to the game setup screen at 0x40)
+  void* screen = *(void**) ((size_t) dd + 0x40);
+  void* style_dd = *(void**) ((size_t) screen + 0xAF8);
+  aoc_dropdown_set_line_by_id(style_dd, type);
+
+  // Clear the list and insert our correct map types.
+  aoc_dropdown_empty_list(dd);
+
+  // (unfortunately need to hardcode this)
+  if (type == RealWorld) {
+    append_default_real_world_maps(dd);
+  }
+
+  append_custom_maps(dd, type);
+  if (!aoc_dropdown_set_line_by_id(dd, get_map_type())) {
+    map_section_t section = custom_sections[type - CustomSection];
+    dbg_print("set default map %d\n", section.default_map);
+    aoc_dropdown_set_line_by_id(dd, section.default_map);
+  }
+
+  return 1;
+}
+
+static void __thiscall after_map_style_change_hook(void* screen) {
+  dbg_print("called after_map_style_change hook %p\n", screen);
+
+  void* style_dd = *(void**) ((size_t) screen + 0xAF8);
+  custom_map_type_t type = aoc_dropdown_get_id(style_dd);
+  dbg_print("map style is %d\n", type);
+
+  if (type < CustomSection) {
+    aoc_set_map_type_rollover_ids(screen);
+    return;
+  }
+
+  void* map_dd = *(void**) ((size_t) screen + 0xB00);
+
+  aoc_dropdown_empty_list(map_dd);
+  append_custom_maps(map_dd, type);
+  if (!aoc_dropdown_set_line_by_id(map_dd, get_map_type())) {
+    map_section_t section = custom_sections[type - CustomSection];
+    dbg_print("set default map %d\n", section.default_map);
+    aoc_dropdown_set_line_by_id(map_dd, section.default_map);
+  }
+}
+
 
 static void replace_terrain_texture(void* texture, int terrain_id, int slp_id) {
   dbg_print("Replacing texture for terrain #%d by SLP %d\n", terrain_id, slp_id);
@@ -271,31 +435,19 @@ void aoc_builtin_rms_init(
   int h = 0; // hooks counter
 
   /* Stuff to display custom maps in the dropdown menus */
-  aoc_dropdown_add_line = (fn_dropdown_add_line) offs_dropdown_add_line;
-  aoc_dropdown_add_string = (fn_dropdown_add_string) offs_dropdown_add_string;
-  aoc_text_add_line = (fn_text_add_line) offs_text_add_line;
-  aoc_text_get_value = (fn_text_get_value) offs_text_get_value;
-  aoc_text_set_rollover_id = (fn_text_set_rollover_id) offs_text_set_rollover_id;
   hooks[h++] = install_jmphook((void*) offs_dropdown_add_line, dropdown_add_line_hook);
   hooks[h++] = install_callhook((void*) offs_text_get_map_value, text_get_map_value_hook);
-
-  /* Stuff to override terrain textures */
-  aoc_texture_create = (fn_texture_create) offs_texture_create;
-  aoc_texture_destroy = (fn_texture_destroy) offs_texture_destroy;
+  hooks[h++] = install_callhook((void*) 0x5053B6, set_map_by_id_hook);
+  hooks[h++] = install_callhook((void*) 0x4FE654, after_map_style_change_hook);
 
   /* Stuff to resolve the custom map ID to a DRS file */
-  aoc_rms_controller_constructor = (fn_rms_controller_constructor) offs_rms_controller_constructor;
   hooks[h++] = install_callhook((void*) offs_rms_controller, rms_controller_hook);
 
   /* Stuff to add AI constants */
-  aoc_ai_define_symbol = (fn_ai_define_symbol) offs_ai_define_symbol;
-  aoc_ai_define_const = (fn_ai_define_const) offs_ai_define_const;
   hooks[h++] = install_callhook((void*) offs_ai_define_map_symbol, ai_define_map_symbol_hook);
   hooks[h++] = install_callhook((void*) offs_ai_define_map_const, ai_define_map_const_hook);
 
   /* Stuff to make real world maps work */
-  aoc_map_generate = (fn_map_generate) offs_map_generate;
-  aoc_load_scx = (fn_load_scx) offs_load_scx;
   hooks[h++] = install_vtblhook((void*) offs_vtbl_map_generate, map_generate_hook);
   hooks[h] = NULL;
 }
