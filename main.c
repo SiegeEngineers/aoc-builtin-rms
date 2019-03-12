@@ -134,7 +134,17 @@ static parse_map_result_t parse_map(ezxml_t node, custom_map_type_t type) {
 
   // Derive ai const name: lowercase name
   char const_name[80];
-  int const_len = sprintf(const_name, "%s", name);
+  char const_pattern[80];
+  strcpy(const_pattern, "%s");
+  if (type == RealWorld) {
+    strcpy(const_pattern, "real-world-%s");
+  } else if (type >= CustomSection) {
+    char* prefix = custom_sections[type - CustomSection].ai_const_prefix;
+    if (prefix != NULL) {
+      sprintf(const_pattern, "%s-%%s", prefix);
+    }
+  }
+  int const_len = sprintf(const_name, const_pattern, name);
   CharLowerBuffA(const_name, const_len);
   map.ai_const_name = calloc(1, const_len + 1);
   strcpy(map.ai_const_name, const_name);
@@ -142,7 +152,17 @@ static parse_map_result_t parse_map(ezxml_t node, custom_map_type_t type) {
   // Derive ai symbol name: uppercase name suffixed with -MAP,
   // with REAL-WORLD- prefix for real world maps
   char symbol_name[100];
-  int symbol_len = sprintf(symbol_name, map.scx_drs_id != -1 ? "REAL-WORLD-%s-MAP" : "%s-MAP", name);
+  char symbol_pattern[80];
+  strcpy(symbol_pattern, "%s");
+  if (type == RealWorld) {
+    strcpy(symbol_pattern, "REAL-WORLD-%s");
+  } else if (type >= CustomSection) {
+    char* prefix = custom_sections[type - CustomSection].ai_symbol_prefix;
+    if (prefix != NULL) {
+      sprintf(symbol_pattern, "%s-%%s", prefix);
+    }
+  }
+  int symbol_len = sprintf(symbol_name, symbol_pattern, name);
   CharUpperBuffA(symbol_name, symbol_len);
   map.ai_symbol_name = calloc(1, symbol_len + 1);
   strcpy(map.ai_symbol_name, symbol_name);
@@ -174,18 +194,37 @@ static parse_section_result_t parse_section(ezxml_t node) {
       return NoCustomName;
     }
     custom_sections[i].name = atoi(name);
+
     const char* default_map = ezxml_attr(node, "default");
     if (default_map == NULL) {
       custom_sections[i].default_map = -1;
     } else {
       custom_sections[i].default_map = atoi(default_map);
+      if (custom_sections[i].default_map < 0) {
+        custom_sections[i].default_map = 255 + (char)custom_sections[i].default_map;
+      }
     }
+
+    const char* ai_symbol_prefix = ezxml_attr(node, "aiSymbolPrefix");
+    if (ai_symbol_prefix != NULL) {
+      custom_sections[i].ai_symbol_prefix = strdup(ai_symbol_prefix);
+    } else {
+      custom_sections[i].ai_symbol_prefix = NULL;
+    }
+
+    const char* ai_const_prefix = ezxml_attr(node, "aiConstPrefix");
+    if (ai_const_prefix != NULL) {
+      custom_sections[i].ai_const_prefix = strdup(ai_const_prefix);
+    } else {
+      custom_sections[i].ai_const_prefix = NULL;
+    }
+
     type = CustomSection + i;
   } else {
     return InvalidTag;
   }
 
-  for (ezxml_t map = ezxml_child(node, "map"); map; map = ezxml_next(map)) {
+  for (ezxml_t map = ezxml_child(node, "map"); map != NULL; map = ezxml_next(map)) {
     parse_map_result_t err = parse_map(map, type);
     switch (err) {
       case NoId: MessageBoxA(NULL, "A <map /> is missing an id attribute", NULL, 0); break;

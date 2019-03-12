@@ -41,6 +41,10 @@ typedef struct map_section {
   int name;
   /* ID of the default map selection for this style. */
   int default_map;
+  /* Prefix for AI symbols for this style. For example, "SPECIAL-MAP" defines "SPECIAL-MAP-SNAKE-PIT". */
+  char* ai_symbol_prefix;
+  /* Prefix for AI constants for this style. For example, "special-map" defines "special-map-snake-pit". */
+  char* ai_const_prefix;
 } map_section_t;
 
 void aoc_builtin_rms_init(
