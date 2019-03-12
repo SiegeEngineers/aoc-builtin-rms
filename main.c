@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include "ezxml.h"
 #include "aoc-builtin-rms.h"
+#include "mmmod.h"
 
 #define TERRAIN_TEXTURE_BASE 15000
 #define TERRAIN_TEXTURE_MAX 15050
@@ -276,7 +277,7 @@ static void parse_maps(char* mod_config) {
   ezxml_free(document);
 }
 
-char* read_file(char* filename) {
+static char* read_file(char* filename) {
   FILE* file = fopen(filename, "rb");
   if (file == NULL) return NULL;
   fseek(file, 0, SEEK_END);
@@ -342,14 +343,24 @@ static void deinit() {
   }
 }
 
+void mmm_load(mmm_mod_info* info) {
+  info->name = "Custom Builtin RMS";
+  info->version = AOC_BUILTIN_RMS_VERSION;
+}
+
+void mmm_after_setup(mmm_mod_info* info) {
+  init();
+}
+
+void mmm_unload(mmm_mod_info* info) {
+  deinit();
+}
+
 BOOL WINAPI DllMain(HINSTANCE dll, DWORD reason, void* _) {
-  dbg_print("DllMain %ld\n", reason);
   switch (reason) {
     case DLL_PROCESS_ATTACH:
       DisableThreadLibraryCalls(dll);
-      init();
       break;
-    case DLL_PROCESS_DETACH: deinit(); break;
   }
   return 1;
 }
