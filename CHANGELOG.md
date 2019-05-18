@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.6.0
+* aoc-builtin-rms now requires the [aoc-mmmod](https://github.com/SiegeEngineers/aoc-mmmod) mod loader.
+* Added [custom sections](https://github.com/SiegeEngineers/aoc-builtin-rms#custom-sections).
+
 ## 0.5.0
 * Refactor to use hooking library `hook.c`.
 * Fix an issue where aoc-builtin-rms could look for a config file in the wrong mod directory.
