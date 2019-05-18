@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<random-maps>
+  <standard>
+    <map id="-12" name="forest-nothing" drsId="54251" string="55001" description="55002" />
+    <map id="-13" name="relic-nothing" drsId="54252" string="55003" description="55004" />
+  </standard>
+  <real-world>
+    <map id="-14" name="test" drsId="55001" scxDrsId="56001" string="9764" description="9475" />
+  </real-world>
+  <section name="4801" aiSymbolPrefix="SPECIAL-MAP" aiConstPrefix="special-map">
+    <map id="-33" name="special-test" drsId="54207" string="4841" description="4842" />
+    <map id="-34" name="special-two" drsId="54209" string="4843" description="4844" />
+    <map id="-35" name="special-three" drsId="54226" string="4845" description="4846" />
+    <map id="-36" name="special-four" drsId="54225" string="4847" description="4848" />
+  </section>
+</random-maps>
+

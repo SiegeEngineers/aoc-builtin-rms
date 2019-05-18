@@ -1,0 +1,35 @@
+(defrule (map-type forest-nothing) => (chat-to-all "Forest Nothing") (disable-self))
+(defrule (map-type relic-nothing) => (chat-to-all "Relic Nothing") (disable-self))
+(defrule (map-type real-world-test) => (chat-to-all "Real World Test") (disable-self))
+(defrule (map-type special-map-special-test) => (chat-to-all-using-id 4841) (disable-self))
+(defrule (map-type special-map-special-two) => (chat-to-all-using-id 4843) (disable-self))
+(defrule (map-type special-map-special-three) => (chat-to-all-using-id 4845) (disable-self))
+(defrule (map-type special-map-special-four) => (chat-to-all-using-id 4847) (disable-self))
+
+#load-if-defined FOREST-NOTHING
+  (defrule (true) => (chat-to-all "FOREST-NOTHING") (disable-self))
+#end-if
+
+#load-if-defined RELIC-NOTHING
+  (defrule (true) => (chat-to-all "RELIC-NOTHING") (disable-self))
+#end-if
+
+#load-if-defined REAL-WORLD-TEST
+  (defrule (true) => (chat-to-all "REAL-WORLD-TEST") (disable-self))
+#end-if
+
+#load-if-defined SPECIAL-MAP-SPECIAL-TEST
+  (defrule (true) => (chat-to-all "SPECIAL-MAP-SPECIAL-TEST") (disable-self))
+#end-if
+
+#load-if-defined SPECIAL-MAP-SPECIAL-TWO
+  (defrule (true) => (chat-to-all "SPECIAL-MAP-SPECIAL-TWO") (disable-self))
+#end-if
+
+#load-if-defined SPECIAL-MAP-SPECIAL-THREE
+  (defrule (true) => (chat-to-all "SPECIAL-MAP-SPECIAL-THREE") (disable-self))
+#end-if
+
+#load-if-defined SPECIAL-MAP-SPECIAL-FOUR
+  (defrule (true) => (chat-to-all "SPECIAL-MAP-SPECIAL-FOUR") (disable-self))
+#end-if
