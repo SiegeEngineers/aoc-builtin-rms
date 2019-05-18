@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include "ezxml.h"
 #include "aoc-builtin-rms.h"
+#include "mmmod.h"
 
 #define TERRAIN_TEXTURE_BASE 15000
 #define TERRAIN_TEXTURE_MAX 15050
@@ -11,12 +12,6 @@
 #else
 #  define dbg_print(...)
 #endif
-
-/**
- * Location of the directory name of the active UP mod.
- */
-static const size_t offs_mod_name = 0x7A5058;
-static const size_t offs_mod_dir = 0x7A506C;
 
 static map_section_t custom_sections[100] = {
   { 0 }
@@ -276,7 +271,7 @@ static void parse_maps(char* mod_config) {
   ezxml_free(document);
 }
 
-char* read_file(char* filename) {
+static char* read_file(char* filename) {
   FILE* file = fopen(filename, "rb");
   if (file == NULL) return NULL;
   fseek(file, 0, SEEK_END);
@@ -297,13 +292,18 @@ char* read_file(char* filename) {
   return config;
 }
 
-static void init() {
+void mmm_load(mmm_mod_info* info) {
+  info->name = "Custom Builtin RMS";
+  info->version = AOC_BUILTIN_RMS_VERSION;
+}
+
+void mmm_after_setup(mmm_mod_info* info) {
   dbg_print("init()\n");
-  char* mod_name = *(char**) offs_mod_name;
+  const char* mod_name = info->meta->mod_short_name;
   dbg_print("mod name: %s\n", mod_name);
   if (mod_name == NULL) return;
 
-  char* mod_path = *(char**) offs_mod_dir;
+  const char* mod_path = info->meta->mod_base_dir;
   dbg_print("mod path: %s\n", mod_path);
   if (mod_path == NULL) return;
 
@@ -329,7 +329,7 @@ static void init() {
       custom_maps, count_custom_maps());
 }
 
-static void deinit() {
+void mmm_unload(mmm_mod_info* info) {
   dbg_print("deinit()\n");
   for (size_t i = 0; custom_maps[i].id; i++) {
     if (custom_maps[i].name != NULL)
@@ -343,13 +343,10 @@ static void deinit() {
 }
 
 BOOL WINAPI DllMain(HINSTANCE dll, DWORD reason, void* _) {
-  dbg_print("DllMain %ld\n", reason);
   switch (reason) {
     case DLL_PROCESS_ATTACH:
       DisableThreadLibraryCalls(dll);
-      init();
       break;
-    case DLL_PROCESS_DETACH: deinit(); break;
   }
   return 1;
 }
