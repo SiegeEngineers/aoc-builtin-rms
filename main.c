@@ -1,6 +1,6 @@
 #include "aoc-builtin-rms.h"
-#include "ezxml.h"
-#include "mmmod.h"
+#include <ezxml/ezxml.h>
+#include <mmmod.h>
 #include <stdio.h>
 #include <windows.h>
 
