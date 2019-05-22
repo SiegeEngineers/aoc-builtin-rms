@@ -10,11 +10,13 @@ else
 endif
 
 all: aoc-builtin-rms.dll aoc-builtin-rms-api.dll
+format:
+	clang-format -style=file -i aoc-builtin-rms.c main.c aoc-builtin-rms.h
 
 clean:
 	rm -f aoc-builtin-rms.dll aoc-builtin-rms-api.dll ezxml.o
 
-.PHONY: all clean
+.PHONY: all clean format
 
 ezxml.o: ezxml.c ezxml.h
 	$(CC) -c -o $@ -DEZXML_NOMMAP -Wall -m32 $(FLAGS) ezxml.c

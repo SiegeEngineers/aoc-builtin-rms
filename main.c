@@ -1,31 +1,28 @@
-#include <windows.h>
-#include <stdio.h>
-#include "ezxml.h"
 #include "aoc-builtin-rms.h"
+#include "ezxml.h"
 #include "mmmod.h"
+#include <stdio.h>
+#include <windows.h>
 
 #define TERRAIN_TEXTURE_BASE 15000
 #define TERRAIN_TEXTURE_MAX 15050
 
 #ifdef DEBUG
-#  define dbg_print(...) printf("[aoc-builtin-rms] " __VA_ARGS__)
+#define dbg_print(...) printf("[aoc-builtin-rms] " __VA_ARGS__)
 #else
-#  define dbg_print(...)
+#define dbg_print(...)
 #endif
 
-static map_section_t custom_sections[100] = {
-  { 0 }
-};
-static custom_map_t custom_maps[255] = {
-  { 0 }
-};
+static map_section_t custom_sections[100] = {{0}};
+static custom_map_t custom_maps[255] = {{0}};
 
 /**
  * Count the number of custom sections.
  */
 static size_t count_custom_sections() {
   size_t i = 0;
-  for (; custom_sections[i].name; i++) {}
+  for (; custom_sections[i].name; i++) {
+  }
   return i;
 }
 
@@ -34,7 +31,8 @@ static size_t count_custom_sections() {
  */
 static size_t count_custom_maps() {
   size_t i = 0;
-  for (; custom_maps[i].id; i++) {}
+  for (; custom_maps[i].id; i++) {
+  }
   return i;
 }
 
@@ -48,7 +46,8 @@ typedef enum parse_map_result {
   TooBigTerrain
 } parse_map_result_t;
 
-static parse_map_result_t parse_map_terrain_overrides(const char* source, terrain_overrides_t* out) {
+static parse_map_result_t
+parse_map_terrain_overrides(const char* source, terrain_overrides_t* out) {
   const char* read_ptr = source;
   const char* end_ptr = strchr(source, '\0');
 
@@ -65,7 +64,8 @@ static parse_map_result_t parse_map_terrain_overrides(const char* source, terrai
     }
 
     read_ptr = strchr(read_ptr, ',');
-    if (read_ptr != NULL) read_ptr++;
+    if (read_ptr != NULL)
+      read_ptr++;
   } while (read_ptr && read_ptr < end_ptr);
   return MapOk;
 }
@@ -74,39 +74,47 @@ static parse_map_result_t parse_map_terrain_overrides(const char* source, terrai
  * Parse a <map /> XML element.
  */
 static parse_map_result_t parse_map(ezxml_t node, custom_map_type_t type) {
-  custom_map_t map = {
-    .id = 0,
-    .name = NULL,
-    .string = -1,
-    .description = -1,
-    .ai_const_name = NULL,
-    .ai_symbol_name = NULL,
-    .type = type,
-    .scx_drs_id = -1
-  };
+  custom_map_t map = {.id = 0,
+                      .name = NULL,
+                      .string = -1,
+                      .description = -1,
+                      .ai_const_name = NULL,
+                      .ai_symbol_name = NULL,
+                      .type = type,
+                      .scx_drs_id = -1};
   for (int i = 0; i < 50; i++) {
     map.terrains.terrains[i] = -1;
   }
 
   const char* id = ezxml_attr(node, "id");
-  if (id == NULL) { return NoId; }
+  if (id == NULL) {
+    return NoId;
+  }
   map.id = atoi(id);
   if (map.id < 0) {
     map.id = 255 + (char)map.id;
   }
-  if (map.id > 255) { return TooBigId; }
+  if (map.id > 255) {
+    return TooBigId;
+  }
 
   const char* name = ezxml_attr(node, "name");
-  if (name == NULL || strlen(name) < 1) { return NoName; }
+  if (name == NULL || strlen(name) < 1) {
+    return NoName;
+  }
   map.name = calloc(1, strlen(name) + 1);
   strcpy(map.name, name);
 
   const char* string = ezxml_attr(node, "string");
-  if (string == NULL) { return NoStringId; }
+  if (string == NULL) {
+    return NoStringId;
+  }
   map.string = atoi(string);
 
   const char* drs_id = ezxml_attr(node, "drsId");
-  if (drs_id == NULL) { return NoDrsId; }
+  if (drs_id == NULL) {
+    return NoDrsId;
+  }
   map.drs_id = atoi(drs_id);
 
   const char* scx_drs_id = ezxml_attr(node, "scxDrsId");
@@ -165,7 +173,7 @@ static parse_map_result_t parse_map(ezxml_t node, custom_map_type_t type) {
   printf("[aoc-builtin-rms] Add modded map: %s\n", map.name);
   size_t i = count_custom_maps();
   custom_maps[i] = map;
-  custom_maps[i + 1] = (custom_map_t) {0};
+  custom_maps[i + 1] = (custom_map_t){0};
   return MapOk;
 }
 
@@ -196,7 +204,8 @@ static parse_section_result_t parse_section(ezxml_t node) {
     } else {
       custom_sections[i].default_map = atoi(default_map);
       if (custom_sections[i].default_map < 0) {
-        custom_sections[i].default_map = 255 + (char)custom_sections[i].default_map;
+        custom_sections[i].default_map =
+            255 + (char)custom_sections[i].default_map;
       }
     }
 
@@ -219,22 +228,40 @@ static parse_section_result_t parse_section(ezxml_t node) {
     return InvalidTag;
   }
 
-  for (ezxml_t map = ezxml_child(node, "map"); map != NULL; map = ezxml_next(map)) {
+  for (ezxml_t map = ezxml_child(node, "map"); map != NULL;
+       map = ezxml_next(map)) {
     parse_map_result_t err = parse_map(map, type);
     switch (err) {
-      case NoId: MessageBoxA(NULL, "A <map /> is missing an id attribute", NULL, 0); break;
-      case NoName: MessageBoxA(NULL, "A <map /> is missing a name attribute", NULL, 0); break;
-      case NoStringId: MessageBoxA(NULL, "A <map /> is missing a string attribute", NULL, 0); break;
-      case NoDrsId: MessageBoxA(NULL, "A <map /> is missing a drsId attribute", NULL, 0); break;
-      case TooBigId: MessageBoxA(NULL, "A <map />'s map ID is too large: must be at most 255", NULL, 0); break;
-      case TooBigTerrain: MessageBoxA(NULL, "A <map /> has an incorrect terrainOverrides attribute. Only terrains 15000-15050 can be overridden", NULL, 0); break;
-      case MapOk:
-        if (custom_sections[count_custom_sections() - 1].default_map == -1) {
-          custom_sections[count_custom_sections() - 1].default_map =
+    case NoId:
+      MessageBoxA(NULL, "A <map /> is missing an id attribute", NULL, 0);
+      break;
+    case NoName:
+      MessageBoxA(NULL, "A <map /> is missing a name attribute", NULL, 0);
+      break;
+    case NoStringId:
+      MessageBoxA(NULL, "A <map /> is missing a string attribute", NULL, 0);
+      break;
+    case NoDrsId:
+      MessageBoxA(NULL, "A <map /> is missing a drsId attribute", NULL, 0);
+      break;
+    case TooBigId:
+      MessageBoxA(NULL, "A <map />'s map ID is too large: must be at most 255",
+                  NULL, 0);
+      break;
+    case TooBigTerrain:
+      MessageBoxA(NULL,
+                  "A <map /> has an incorrect terrainOverrides attribute. Only "
+                  "terrains 15000-15050 can be overridden",
+                  NULL, 0);
+      break;
+    case MapOk:
+      if (custom_sections[count_custom_sections() - 1].default_map == -1) {
+        custom_sections[count_custom_sections() - 1].default_map =
             custom_maps[count_custom_maps() - 1].id;
-        }
-        break;
-      default: break;
+      }
+      break;
+    default:
+      break;
     }
   }
 
@@ -248,23 +275,33 @@ static void parse_maps(char* mod_config) {
   char err_message[256];
   ezxml_t document = ezxml_parse_str(mod_config, strlen(mod_config));
   if (!document) {
-    MessageBoxA(NULL, "Could not parse aoc-builtin-rms.xml, please check its syntax", NULL, 0);
+    MessageBoxA(NULL,
+                "Could not parse aoc-builtin-rms.xml, please check its syntax",
+                NULL, 0);
     return;
   }
 
   const char* root_name = ezxml_name(document);
   if (root_name == NULL || strncmp(root_name, "random-maps", 11) != 0) {
-    sprintf(err_message, "The top-level element must be <random-maps>, got <%s>", root_name);
+    sprintf(err_message,
+            "The top-level element must be <random-maps>, got <%s>", root_name);
     MessageBoxA(NULL, err_message, NULL, 0);
     ezxml_free(document);
     return;
   }
 
-  for (ezxml_t section = document->child; section != NULL; section = section->ordered) {
+  for (ezxml_t section = document->child; section != NULL;
+       section = section->ordered) {
     parse_section_result_t err = parse_section(section);
     switch (err) {
-      case InvalidTag: MessageBoxA(NULL, "Only <standard>, <real-world>, <section> are allowed in this context", NULL, 0); break;
-      default: break;
+    case InvalidTag:
+      MessageBoxA(NULL,
+                  "Only <standard>, <real-world>, <section> are allowed in "
+                  "this context",
+                  NULL, 0);
+      break;
+    default:
+      break;
     }
   }
 
@@ -273,7 +310,8 @@ static void parse_maps(char* mod_config) {
 
 static char* read_file(char* filename) {
   FILE* file = fopen(filename, "rb");
-  if (file == NULL) return NULL;
+  if (file == NULL)
+    return NULL;
   fseek(file, 0, SEEK_END);
   int size = ftell(file);
   fseek(file, 0, SEEK_SET);
@@ -301,11 +339,13 @@ void mmm_after_setup(mmm_mod_info* info) {
   dbg_print("init()\n");
   const char* mod_name = info->meta->mod_short_name;
   dbg_print("mod name: %s\n", mod_name);
-  if (mod_name == NULL) return;
+  if (mod_name == NULL)
+    return;
 
   const char* mod_path = info->meta->mod_base_dir;
   dbg_print("mod path: %s\n", mod_path);
-  if (mod_path == NULL) return;
+  if (mod_path == NULL)
+    return;
 
   char xml_path[MAX_PATH];
   // mod_path includes trailing slash
@@ -313,7 +353,8 @@ void mmm_after_setup(mmm_mod_info* info) {
 
   dbg_print("config path: %s\n", xml_path);
   char* config = read_file(xml_path);
-  if (config == NULL) return;
+  if (config == NULL)
+    return;
 
   parse_maps(config);
   free(config);
@@ -324,9 +365,8 @@ void mmm_after_setup(mmm_mod_info* info) {
   }
   printf("[aoc-builtin-rms] Found custom maps, installing hooks.\n");
 
-  aoc_builtin_rms_init(
-      custom_sections, count_custom_sections(),
-      custom_maps, count_custom_maps());
+  aoc_builtin_rms_init(custom_sections, count_custom_sections(), custom_maps,
+                       count_custom_maps());
 }
 
 void mmm_unload(mmm_mod_info* info) {
@@ -344,9 +384,9 @@ void mmm_unload(mmm_mod_info* info) {
 
 BOOL WINAPI DllMain(HINSTANCE dll, DWORD reason, void* _) {
   switch (reason) {
-    case DLL_PROCESS_ATTACH:
-      DisableThreadLibraryCalls(dll);
-      break;
+  case DLL_PROCESS_ATTACH:
+    DisableThreadLibraryCalls(dll);
+    break;
   }
   return 1;
 }

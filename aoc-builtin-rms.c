@@ -1,16 +1,18 @@
-#include <windows.h>
-#include <stdio.h>
-#include <assert.h>
 #include "aoc-builtin-rms.h"
 #include "hook.h"
+#include <assert.h>
+#include <stdio.h>
+#include <windows.h>
 
 #define TERRAIN_TEXTURE_BASE 15000
 #define TERRAIN_TEXTURE_MAX 15050
 
 #ifdef DEBUG
-#  define dbg_print(...) printf("[aoc-builtin-rms] " __VA_ARGS__); fflush(stdout)
+#define dbg_print(...)                                                         \
+  printf("[aoc-builtin-rms] " __VA_ARGS__);                                    \
+  fflush(stdout)
 #else
-#  define dbg_print(...)
+#define dbg_print(...)
 #endif
 
 static map_section_t* custom_sections = NULL;
@@ -37,7 +39,8 @@ static const size_t offs_terrain_texture = 0x20;
 
 /* offsets for hooking the random map file reading/parsing */
 
-/* location of the controller call site that has correct filename,drs_id parameters */
+/* location of the controller call site that has correct filename,drs_id
+ * parameters */
 static const size_t offs_rms_controller = 0x45F717;
 /* location of the controller constructor */
 static const size_t offs_rms_controller_constructor = 0x534C40;
@@ -58,7 +61,8 @@ static const size_t offs_text_add_line = 0x5473F0;
 static const size_t offs_text_get_value = 0x5479D0;
 /* location of fn that sets the hover description for a text panel row */
 static const size_t offs_text_set_rollover_id = 0x547C20;
-/* location of the call to text_get_value that happens when applying rollover description IDs */
+/* location of the call to text_get_value that happens when applying rollover
+ * description IDs */
 static const size_t offs_text_get_map_value = 0x5086E1;
 typedef int __thiscall (*fn_dropdown_insert_line)(void*, int, int, int);
 typedef int __thiscall (*fn_dropdown_set_line_by_id)(void*, int);
@@ -91,22 +95,36 @@ static const size_t offs_texture_destroy = 0x4DB110;
 typedef void* __thiscall (*fn_texture_create)(void*, char*, int);
 typedef void __thiscall (*fn_texture_destroy)(void*);
 
-static fn_rms_controller_constructor aoc_rms_controller_constructor = (fn_rms_controller_constructor) offs_rms_controller_constructor;
-static fn_dropdown_insert_line aoc_dropdown_insert_line = (fn_dropdown_insert_line) offs_dropdown_insert_line;
-static fn_dropdown_set_line_by_id aoc_dropdown_set_line_by_id = (fn_dropdown_set_line_by_id) offs_dropdown_set_line_by_id;
-static fn_dropdown_get_id aoc_dropdown_get_id = (fn_dropdown_get_id) offs_dropdown_get_id;
-static fn_dropdown_empty_list aoc_dropdown_empty_list = (fn_dropdown_empty_list) offs_dropdown_empty_list;
-static fn_dropdown_set_sorted aoc_dropdown_set_sorted = (fn_dropdown_set_sorted) offs_dropdown_set_sorted;
-static fn_set_map_type_rollover_ids aoc_set_map_type_rollover_ids = (fn_set_map_type_rollover_ids) offs_set_map_type_rollover_ids;
-static fn_text_add_line aoc_text_add_line = (fn_text_add_line) offs_text_add_line;
-static fn_text_get_value aoc_text_get_value = (fn_text_get_value) offs_text_get_value;
-static fn_text_set_rollover_id aoc_text_set_rollover_id = (fn_text_set_rollover_id) offs_text_set_rollover_id;
-static fn_ai_define_symbol aoc_ai_define_symbol = (fn_ai_define_symbol) offs_ai_define_symbol;
-static fn_ai_define_const aoc_ai_define_const = (fn_ai_define_const) offs_ai_define_const;
-static fn_map_generate aoc_map_generate = (fn_map_generate) offs_map_generate;
-static fn_load_scx aoc_load_scx = (fn_load_scx) offs_load_scx;
-static fn_texture_create aoc_texture_create = (fn_texture_create) offs_texture_create;
-static fn_texture_destroy aoc_texture_destroy = (fn_texture_destroy) offs_texture_destroy;
+static fn_rms_controller_constructor aoc_rms_controller_constructor =
+    (fn_rms_controller_constructor)offs_rms_controller_constructor;
+static fn_dropdown_insert_line aoc_dropdown_insert_line =
+    (fn_dropdown_insert_line)offs_dropdown_insert_line;
+static fn_dropdown_set_line_by_id aoc_dropdown_set_line_by_id =
+    (fn_dropdown_set_line_by_id)offs_dropdown_set_line_by_id;
+static fn_dropdown_get_id aoc_dropdown_get_id =
+    (fn_dropdown_get_id)offs_dropdown_get_id;
+static fn_dropdown_empty_list aoc_dropdown_empty_list =
+    (fn_dropdown_empty_list)offs_dropdown_empty_list;
+static fn_dropdown_set_sorted aoc_dropdown_set_sorted =
+    (fn_dropdown_set_sorted)offs_dropdown_set_sorted;
+static fn_set_map_type_rollover_ids aoc_set_map_type_rollover_ids =
+    (fn_set_map_type_rollover_ids)offs_set_map_type_rollover_ids;
+static fn_text_add_line aoc_text_add_line =
+    (fn_text_add_line)offs_text_add_line;
+static fn_text_get_value aoc_text_get_value =
+    (fn_text_get_value)offs_text_get_value;
+static fn_text_set_rollover_id aoc_text_set_rollover_id =
+    (fn_text_set_rollover_id)offs_text_set_rollover_id;
+static fn_ai_define_symbol aoc_ai_define_symbol =
+    (fn_ai_define_symbol)offs_ai_define_symbol;
+static fn_ai_define_const aoc_ai_define_const =
+    (fn_ai_define_const)offs_ai_define_const;
+static fn_map_generate aoc_map_generate = (fn_map_generate)offs_map_generate;
+static fn_load_scx aoc_load_scx = (fn_load_scx)offs_load_scx;
+static fn_texture_create aoc_texture_create =
+    (fn_texture_create)offs_texture_create;
+static fn_texture_destroy aoc_texture_destroy =
+    (fn_texture_destroy)offs_texture_destroy;
 
 static int get_map_type() {
   int base_offset = *(int*)offs_game_instance;
@@ -150,16 +168,15 @@ static char is_last_real_world_dropdown_entry(int label, int value) {
 
 static void __thiscall append_custom_maps(void* dd, int type) {
   dbg_print("append custom maps of type %d\n", type);
-  void* text_panel = *(void**)((size_t) dd + 256);
+  void* text_panel = *(void**)((size_t)dd + 256);
   if (text_panel == NULL) {
     return;
   }
 
   for (int i = 0; i < num_custom_maps; i++) {
-    if (custom_maps[i].type != type) continue;
-    aoc_text_add_line(text_panel,
-        custom_maps[i].string,
-        custom_maps[i].id);
+    if (custom_maps[i].type != type)
+      continue;
+    aoc_text_add_line(text_panel, custom_maps[i].string, custom_maps[i].id);
   }
 }
 
@@ -180,8 +197,9 @@ static void __thiscall dropdown_add_line_hook(void* dd, int label, int value) {
   if (is_last_type_dropdown_entry(label, value))
     additional_type = -CustomSection;
 
-  if (additional_type !=  -1) {
-    dbg_print("called hooked dropdown_add_line %p %p, %d %d, add %d\n", dd, text_panel, label, value, additional_type);
+  if (additional_type != -1) {
+    dbg_print("called hooked dropdown_add_line %p %p, %d %d, add %d\n", dd,
+              text_panel, label, value, additional_type);
   }
 
   // Original
@@ -189,9 +207,7 @@ static void __thiscall dropdown_add_line_hook(void* dd, int label, int value) {
 
   if (additional_type == -CustomSection) {
     for (int i = 0; i < num_custom_sections; i++) {
-      aoc_text_add_line(text_panel,
-          custom_sections[i].name,
-          CustomSection + i);
+      aoc_text_add_line(text_panel, custom_sections[i].name, CustomSection + i);
     }
   } else if (additional_type >= 0) {
     append_custom_maps(dd, additional_type);
@@ -204,10 +220,12 @@ static int __thiscall text_get_map_value_hook(void* tt, int line_index) {
 
   if (line_index == 0) {
     for (int i = 0; i < num_custom_maps; i++) {
-      if (custom_maps[i].id != selected_map_id) continue;
+      if (custom_maps[i].id != selected_map_id)
+        continue;
       if (custom_maps[i].description != -1) {
         aoc_text_set_rollover_id(tt, line_index, custom_maps[i].description);
-        return 0; /* doesn't have a hardcoded ID so we won't call set_rollover_id twice */
+        return 0; /* doesn't have a hardcoded ID so we won't call
+                     set_rollover_id twice */
       }
     }
   }
@@ -216,7 +234,7 @@ static int __thiscall text_get_map_value_hook(void* tt, int line_index) {
 }
 
 static void append_default_real_world_maps(void* dd) {
-  void* text_panel = *(void**)((size_t) dd + 256);
+  void* text_panel = *(void**)((size_t)dd + 256);
   if (text_panel == NULL) {
     return;
   }
@@ -243,7 +261,8 @@ static void append_default_real_world_maps(void* dd) {
 // Called when the current map type is set "externally", eg
 // by the game host over the network, or when the local users ticks 'Ready'
 static int __thiscall set_map_by_id_hook(void* dd, int id) {
-  dbg_print("called set_map_by_id_hook %p %d, map style is %d\n", dd, id, get_map_style());
+  dbg_print("called set_map_by_id_hook %p %d, map style is %d\n", dd, id,
+            get_map_style());
 
   custom_map_type_t type = get_map_style();
   // This works automatically, because this dropdown is populated
@@ -253,13 +272,13 @@ static int __thiscall set_map_by_id_hook(void* dd, int id) {
     return aoc_dropdown_set_line_by_id(dd, id);
   }
 
-  // For other map IDs, the dropdown currently contains a list of Standard type maps,
-  // and the Map Style dropdown was reset to Standard.
+  // For other map IDs, the dropdown currently contains a list of Standard type
+  // maps, and the Map Style dropdown was reset to Standard.
 
   // Reset the map style dropdown to the actually selected one.
   // (`dd` contains a pointer to the game setup screen at 0x40)
-  void* screen = *(void**) ((size_t) dd + 0x40);
-  void* style_dd = *(void**) ((size_t) screen + 0xAF8);
+  void* screen = *(void**)((size_t)dd + 0x40);
+  void* style_dd = *(void**)((size_t)screen + 0xAF8);
   aoc_dropdown_set_line_by_id(style_dd, type);
 
   // Clear the list and insert our correct map types.
@@ -284,7 +303,7 @@ static int __thiscall set_map_by_id_hook(void* dd, int id) {
 static void __thiscall after_map_style_change_hook(void* screen) {
   dbg_print("called after_map_style_change hook %p\n", screen);
 
-  void* style_dd = *(void**) ((size_t) screen + 0xAF8);
+  void* style_dd = *(void**)((size_t)screen + 0xAF8);
   custom_map_type_t type = aoc_dropdown_get_id(style_dd);
   dbg_print("map style is %d\n", type);
 
@@ -293,7 +312,7 @@ static void __thiscall after_map_style_change_hook(void* screen) {
     return;
   }
 
-  void* map_dd = *(void**) ((size_t) screen + 0xB00);
+  void* map_dd = *(void**)((size_t)screen + 0xB00);
 
   aoc_dropdown_empty_list(map_dd);
   append_custom_maps(map_dd, type);
@@ -307,7 +326,8 @@ static void __thiscall after_map_style_change_hook(void* screen) {
 static void replace_terrain_texture(void* texture, int terrain_id, int slp_id) {
   // Replace a terrain texture in-place by calling destructor, then constructor
   // with the new SLP ID.
-  dbg_print("Replacing texture for terrain #%d by SLP %d\n", terrain_id, slp_id);
+  dbg_print("Replacing texture for terrain #%d by SLP %d\n", terrain_id,
+            slp_id);
   aoc_texture_destroy(texture);
   char name[100];
   sprintf(name, "terrain%d.shp", terrain_id);
@@ -316,21 +336,26 @@ static void replace_terrain_texture(void* texture, int terrain_id, int slp_id) {
 
 static void apply_terrain_overrides(terrain_overrides_t* overrides) {
   void* world = get_world();
-  size_t world_offset = (size_t) world;
+  size_t world_offset = (size_t)world;
   void* map = *(void**)(world_offset + offs_map);
-  size_t map_offset = (size_t) map;
+  size_t map_offset = (size_t)map;
   for (int i = 0; i < 42; i++) {
-    size_t terrain_offset = map_offset + offs_terrains + (sizeof_terrain_struct * i);
+    size_t terrain_offset =
+        map_offset + offs_terrains + (sizeof_terrain_struct * i);
     int* texture_id = (int*)(terrain_offset + offs_terrain_texture_id);
     void* texture = *(void**)(terrain_offset + offs_terrain_texture);
-    if (*texture_id < TERRAIN_TEXTURE_BASE || *texture_id >= TERRAIN_TEXTURE_MAX) continue;
+    if (*texture_id < TERRAIN_TEXTURE_BASE ||
+        *texture_id >= TERRAIN_TEXTURE_MAX)
+      continue;
 
-    int new_texture_id = overrides->terrains[*texture_id - TERRAIN_TEXTURE_BASE];
-    // In UserPatch 1.5, ZR@ terrains are applied very late (after this function runs)
-    // They work by looping through _all_ terrain types on _every_ map, even non-ZR@,
-    // and re-constructing the texture instances (in the same way as replace_terrain_texture).
-    // So, it also reconstructs non-changed textures, based on the texture_id. That's why
-    // we overwrite it here. the game doesn't actually use it.
+    int new_texture_id =
+        overrides->terrains[*texture_id - TERRAIN_TEXTURE_BASE];
+    // In UserPatch 1.5, ZR@ terrains are applied very late (after this function
+    // runs) They work by looping through _all_ terrain types on _every_ map,
+    // even non-ZR@, and re-constructing the texture instances (in the same way
+    // as replace_terrain_texture). So, it also reconstructs non-changed
+    // textures, based on the texture_id. That's why we overwrite it here. the
+    // game doesn't actually use it.
     if (new_texture_id != -1) {
       *texture_id = new_texture_id;
       replace_terrain_texture(texture, i, new_texture_id);
@@ -339,7 +364,9 @@ static void apply_terrain_overrides(terrain_overrides_t* overrides) {
 }
 
 static void* current_game_info;
-static void __thiscall map_generate_hook(void* map, int size_x, int size_y, char* name, void* game_info, int num_players) {
+static void __thiscall map_generate_hook(void* map, int size_x, int size_y,
+                                         char* name, void* game_info,
+                                         int num_players) {
   dbg_print("called hooked map_generate %s %p\n", name, game_info);
   /* We need to store this to be able to load the scx file later */
   current_game_info = game_info;
@@ -348,7 +375,8 @@ static void __thiscall map_generate_hook(void* map, int size_x, int size_y, char
 
 static char map_filename_str[MAX_PATH];
 static char scx_filename_str[MAX_PATH];
-static void* __thiscall rms_controller_hook(void* controller, char* filename, int drs_id) {
+static void* __thiscall rms_controller_hook(void* controller, char* filename,
+                                            int drs_id) {
   dbg_print("called hooked rms_controller %s %d\n", filename, drs_id);
   int map_type = get_map_type();
   dbg_print("map type: %d\n", map_type);
@@ -363,12 +391,10 @@ static void* __thiscall rms_controller_hook(void* controller, char* filename, in
 
       if (custom_maps[i].scx_drs_id > 0) {
         sprintf(scx_filename_str, "real_world_%s.scx", custom_maps[i].name);
-        dbg_print("real world map: loading %s %d\n",
-            scx_filename_str, custom_maps[i].scx_drs_id);
-        aoc_load_scx(get_world(),
-            scx_filename_str,
-            custom_maps[i].scx_drs_id,
-            current_game_info);
+        dbg_print("real world map: loading %s %d\n", scx_filename_str,
+                  custom_maps[i].scx_drs_id);
+        aoc_load_scx(get_world(), scx_filename_str, custom_maps[i].scx_drs_id,
+                     current_game_info);
       }
 
       break;
@@ -392,20 +418,21 @@ static int __thiscall ai_define_map_symbol_hook(void* ai, char* name) {
   return aoc_ai_define_symbol(ai, name);
 }
 
-static int __thiscall ai_define_map_const_hook(void* ai, char* name, int value) {
+static int __thiscall ai_define_map_const_hook(void* ai, char* name,
+                                               int value) {
   for (int i = 0; i < num_custom_maps; i++) {
-    dbg_print("defining ai const: %s = %d\n", custom_maps[i].ai_const_name, custom_maps[i].id);
-    aoc_ai_define_const(ai,
-        custom_maps[i].ai_const_name,
-        custom_maps[i].id);
+    dbg_print("defining ai const: %s = %d\n", custom_maps[i].ai_const_name,
+              custom_maps[i].id);
+    aoc_ai_define_const(ai, custom_maps[i].ai_const_name, custom_maps[i].id);
   }
   return aoc_ai_define_const(ai, "scenario-map", -1);
 }
 
 hook_t hooks[20];
-void aoc_builtin_rms_init(
-    map_section_t* new_custom_sections, size_t new_num_custom_sections,
-    custom_map_t* new_custom_maps, size_t new_num_custom_maps) {
+void aoc_builtin_rms_init(map_section_t* new_custom_sections,
+                          size_t new_num_custom_sections,
+                          custom_map_t* new_custom_maps,
+                          size_t new_num_custom_maps) {
   dbg_print("init()\n");
 
   assert(custom_sections == NULL);
@@ -420,20 +447,26 @@ void aoc_builtin_rms_init(
   int h = 0; // hooks counter
 
   /* Stuff to display custom maps in the dropdown menus */
-  hooks[h++] = install_jmphook((void*) offs_dropdown_add_line, dropdown_add_line_hook);
-  hooks[h++] = install_callhook((void*) offs_text_get_map_value, text_get_map_value_hook);
-  hooks[h++] = install_callhook((void*) 0x5053B6, set_map_by_id_hook);
-  hooks[h++] = install_callhook((void*) 0x4FE654, after_map_style_change_hook);
+  hooks[h++] =
+      install_jmphook((void*)offs_dropdown_add_line, dropdown_add_line_hook);
+  hooks[h++] =
+      install_callhook((void*)offs_text_get_map_value, text_get_map_value_hook);
+  hooks[h++] = install_callhook((void*)0x5053B6, set_map_by_id_hook);
+  hooks[h++] = install_callhook((void*)0x4FE654, after_map_style_change_hook);
 
   /* Stuff to resolve the custom map ID to a DRS file */
-  hooks[h++] = install_callhook((void*) offs_rms_controller, rms_controller_hook);
+  hooks[h++] =
+      install_callhook((void*)offs_rms_controller, rms_controller_hook);
 
   /* Stuff to add AI constants */
-  hooks[h++] = install_callhook((void*) offs_ai_define_map_symbol, ai_define_map_symbol_hook);
-  hooks[h++] = install_callhook((void*) offs_ai_define_map_const, ai_define_map_const_hook);
+  hooks[h++] = install_callhook((void*)offs_ai_define_map_symbol,
+                                ai_define_map_symbol_hook);
+  hooks[h++] = install_callhook((void*)offs_ai_define_map_const,
+                                ai_define_map_const_hook);
 
   /* Stuff to make real world maps work */
-  hooks[h++] = install_vtblhook((void*) offs_vtbl_map_generate, map_generate_hook);
+  hooks[h++] =
+      install_vtblhook((void*)offs_vtbl_map_generate, map_generate_hook);
   hooks[h] = NULL;
 }
 
