@@ -1,0 +1,5 @@
+EXPORTS
+  DllMain = _DllMain@12
+  mmm_after_setup = _mmm_after_setup
+  mmm_load = _mmm_load
+  mmm_unload = _mmm_unload

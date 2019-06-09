@@ -1,11 +1,12 @@
 #include <assert.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <windows.h>
 
-#ifdef DEBUG
-#define dbg_print(...) printf("[aoc-builtin-rms] [hook] " __VA_ARGS__)
-#else
+#ifdef NDEBUG
 #define dbg_print(...)
+#else
+#define dbg_print(...) printf("[aoc-builtin-rms] [hook] " __VA_ARGS__)
 #endif
 
 struct hook {
