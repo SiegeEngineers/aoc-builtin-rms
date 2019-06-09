@@ -7,12 +7,12 @@
 #define TERRAIN_TEXTURE_BASE 15000
 #define TERRAIN_TEXTURE_MAX 15050
 
-#ifdef DEBUG
+#ifdef NDEBUG
+#define dbg_print(...)
+#else
 #define dbg_print(...)                                                         \
   printf("[aoc-builtin-rms] " __VA_ARGS__);                                    \
   fflush(stdout)
-#else
-#define dbg_print(...)
 #endif
 
 static map_section_t* custom_sections = NULL;
