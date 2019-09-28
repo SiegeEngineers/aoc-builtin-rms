@@ -2,7 +2,7 @@
 #define _AOC_BUILTIN_RMS_H
 #include <stddef.h>
 
-#define AOC_BUILTIN_RMS_VERSION "0.6.0"
+#define AOC_BUILTIN_RMS_VERSION "0.6.1"
 
 typedef struct terrain_overrides {
   int terrains[50];
