@@ -2,10 +2,11 @@
 #include "hook.h"
 #include <assert.h>
 #include <stdio.h>
-#include <windows.h>
+#include <string.h>
 
 #define TERRAIN_TEXTURE_BASE 15000
 #define TERRAIN_TEXTURE_MAX 15050
+#define MAX_PATH 260
 
 #ifdef NDEBUG
 #define dbg_print(...)
