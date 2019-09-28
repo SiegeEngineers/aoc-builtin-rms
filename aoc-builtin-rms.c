@@ -215,18 +215,16 @@ static void __thiscall dropdown_add_line_hook(void* dd, int label, int value) {
 }
 
 static int __thiscall text_get_map_value_hook(void* tt, int line_index) {
-  // dbg_print("called hooked text_get_map_value %p %d\n", tt, line_index);
+  dbg_print("called hooked text_get_map_value %p %d\n", tt, line_index);
   int selected_map_id = aoc_text_get_value(tt, line_index);
 
-  if (line_index == 0) {
-    for (int i = 0; i < num_custom_maps; i++) {
-      if (custom_maps[i].id != selected_map_id)
-        continue;
-      if (custom_maps[i].description != -1) {
-        aoc_text_set_rollover_id(tt, line_index, custom_maps[i].description);
-        return 0; /* doesn't have a hardcoded ID so we won't call
-                     set_rollover_id twice */
-      }
+  for (int i = 0; i < num_custom_maps; i++) {
+    if (custom_maps[i].id != selected_map_id)
+      continue;
+    if (custom_maps[i].description != -1) {
+      aoc_text_set_rollover_id(tt, line_index, custom_maps[i].description);
+      return 0; /* doesn't have a hardcoded ID so we won't call
+                   set_rollover_id twice */
     }
   }
 
