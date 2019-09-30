@@ -1,4 +1,5 @@
 #include "aoc-builtin-rms.h"
+#include "call_conventions.h"
 #include "hook.h"
 #include <assert.h>
 #include <stdio.h>
@@ -45,8 +46,8 @@ static const size_t offs_terrain_texture = 0x20;
 static const size_t offs_rms_controller = 0x45F717;
 /* location of the controller constructor */
 static const size_t offs_rms_controller_constructor = 0x534C40;
-typedef void* __thiscall (*fn_rms_load_scx)(void*, char*, int, void*);
-typedef void* __thiscall (*fn_rms_controller_constructor)(void*, char*, int);
+typedef void* THISCALL((*fn_rms_load_scx), void*, char*, int, void*);
+typedef void* THISCALL((*fn_rms_controller_constructor), void*, char*, int);
 
 /* offsets for hooking the builtin random map file list */
 
@@ -65,36 +66,36 @@ static const size_t offs_text_set_rollover_id = 0x547C20;
 /* location of the call to text_get_value that happens when applying rollover
  * description IDs */
 static const size_t offs_text_get_map_value = 0x5086E1;
-typedef int __thiscall (*fn_dropdown_insert_line)(void*, int, int, int);
-typedef int __thiscall (*fn_dropdown_set_line_by_id)(void*, int);
-typedef custom_map_type_t __thiscall (*fn_dropdown_get_id)(void*);
-typedef int __thiscall (*fn_dropdown_empty_list)(void*);
-typedef int __thiscall (*fn_dropdown_set_sorted)(void*, int);
-typedef int __thiscall (*fn_set_map_type_rollover_ids)(void*);
-typedef int __thiscall (*fn_text_add_line)(void*, int, int);
-typedef int __thiscall (*fn_text_get_value)(void*, int);
-typedef int __thiscall (*fn_text_set_rollover_id)(void*, int, int);
+typedef int THISCALL((*fn_dropdown_insert_line), void*, int, int, int);
+typedef int THISCALL((*fn_dropdown_set_line_by_id), void*, int);
+typedef custom_map_type_t THISCALL((*fn_dropdown_get_id), void*);
+typedef int THISCALL((*fn_dropdown_empty_list), void*);
+typedef int THISCALL((*fn_dropdown_set_sorted), void*, int);
+typedef int THISCALL((*fn_set_map_type_rollover_ids), void*);
+typedef int THISCALL((*fn_text_add_line), void*, int, int);
+typedef int THISCALL((*fn_text_get_value), void*, int);
+typedef int THISCALL((*fn_text_set_rollover_id), void*, int, int);
 
 /* offsets for defining the AI constants */
 static const size_t offs_ai_define_symbol = 0x5F74F0;
 static const size_t offs_ai_define_const = 0x5F7530;
 static const size_t offs_ai_define_map_symbol = 0x4A27F7;
 static const size_t offs_ai_define_map_const = 0x4A4470;
-typedef int __thiscall (*fn_ai_define_symbol)(void*, char*);
-typedef int __thiscall (*fn_ai_define_const)(void*, char*, int);
+typedef int THISCALL((*fn_ai_define_symbol), void*, char*);
+typedef int THISCALL((*fn_ai_define_const), void*, char*, int);
 
 /* offsets for real world map hooks */
 static const size_t offs_vtbl_map_generate = 0x638114;
 static const size_t offs_map_generate = 0x45EE10;
 static const size_t offs_load_scx = 0x40DF00;
-typedef int __thiscall (*fn_map_generate)(void*, int, int, char*, void*, int);
-typedef int __thiscall (*fn_load_scx)(void*, char*, int, void*);
+typedef int THISCALL((*fn_map_generate), void*, int, int, char*, void*, int);
+typedef int THISCALL((*fn_load_scx), void*, char*, int, void*);
 
 /* offsets for terrain overrides */
 static const size_t offs_texture_create = 0x4DAE00;
 static const size_t offs_texture_destroy = 0x4DB110;
-typedef void* __thiscall (*fn_texture_create)(void*, char*, int);
-typedef void __thiscall (*fn_texture_destroy)(void*);
+typedef void* THISCALL((*fn_texture_create), void*, char*, int);
+typedef void THISCALL((*fn_texture_destroy), void*);
 
 static fn_rms_controller_constructor aoc_rms_controller_constructor =
     (fn_rms_controller_constructor)offs_rms_controller_constructor;
@@ -167,7 +168,7 @@ static char is_last_real_world_dropdown_entry(int label, int value) {
   return label == 13553 && value == 43; /* Byzantium */
 }
 
-static void __thiscall append_custom_maps(void* dd, int type) {
+static void THISCALL(append_custom_maps, void* dd, int type) {
   dbg_print("append custom maps of type %d\n", type);
   void* text_panel = *(void**)((size_t)dd + 256);
   if (text_panel == NULL) {
@@ -181,7 +182,7 @@ static void __thiscall append_custom_maps(void* dd, int type) {
   }
 }
 
-static void __thiscall dropdown_add_line_hook(void* dd, int label, int value) {
+static void THISCALL(dropdown_add_line_hook, void* dd, int label, int value) {
   int dd_offset = (int)dd;
   void* text_panel = *(void**)(dd_offset + 256);
   if (text_panel == NULL) {
@@ -215,7 +216,7 @@ static void __thiscall dropdown_add_line_hook(void* dd, int label, int value) {
   }
 }
 
-static int __thiscall text_get_map_value_hook(void* tt, int line_index) {
+static int THISCALL(text_get_map_value_hook, void* tt, int line_index) {
   dbg_print("called hooked text_get_map_value %p %d\n", tt, line_index);
   int selected_map_id = aoc_text_get_value(tt, line_index);
 
@@ -232,7 +233,7 @@ static int __thiscall text_get_map_value_hook(void* tt, int line_index) {
   return selected_map_id;
 }
 
-static void append_default_real_world_maps(void* dd) {
+static void THISCALL(append_default_real_world_maps, void* dd) {
   void* text_panel = *(void**)((size_t)dd + 256);
   if (text_panel == NULL) {
     return;
@@ -259,7 +260,7 @@ static void append_default_real_world_maps(void* dd) {
 
 // Called when the current map type is set "externally", eg
 // by the game host over the network, or when the local users ticks 'Ready'
-static int __thiscall set_map_by_id_hook(void* dd, int id) {
+static int THISCALL(set_map_by_id_hook, void* dd, int id) {
   dbg_print("called set_map_by_id_hook %p %d, map style is %d\n", dd, id,
             get_map_style());
 
@@ -299,7 +300,7 @@ static int __thiscall set_map_by_id_hook(void* dd, int id) {
 }
 
 // Called when the local user changes the map style
-static void __thiscall after_map_style_change_hook(void* screen) {
+static void THISCALL(after_map_style_change_hook, void* screen) {
   dbg_print("called after_map_style_change hook %p\n", screen);
 
   void* style_dd = *(void**)((size_t)screen + 0xAF8);
@@ -322,7 +323,7 @@ static void __thiscall after_map_style_change_hook(void* screen) {
   }
 }
 
-static void replace_terrain_texture(void* texture, int terrain_id, int slp_id) {
+static void THISCALL(replace_terrain_texture, void* texture, int terrain_id, int slp_id) {
   // Replace a terrain texture in-place by calling destructor, then constructor
   // with the new SLP ID.
   dbg_print("Replacing texture for terrain #%d by SLP %d\n", terrain_id,
@@ -333,7 +334,7 @@ static void replace_terrain_texture(void* texture, int terrain_id, int slp_id) {
   aoc_texture_create(texture, name, slp_id);
 }
 
-static void apply_terrain_overrides(terrain_overrides_t* overrides) {
+static void THISCALL(apply_terrain_overrides, terrain_overrides_t* overrides) {
   void* world = get_world();
   size_t world_offset = (size_t)world;
   void* map = *(void**)(world_offset + offs_map);
@@ -363,7 +364,7 @@ static void apply_terrain_overrides(terrain_overrides_t* overrides) {
 }
 
 static void* current_game_info;
-static void __thiscall map_generate_hook(void* map, int size_x, int size_y,
+static void THISCALL(map_generate_hook, void* map, int size_x, int size_y,
                                          char* name, void* game_info,
                                          int num_players) {
   dbg_print("called hooked map_generate %s %p\n", name, game_info);
@@ -374,7 +375,7 @@ static void __thiscall map_generate_hook(void* map, int size_x, int size_y,
 
 static char map_filename_str[MAX_PATH];
 static char scx_filename_str[MAX_PATH];
-static void* __thiscall rms_controller_hook(void* controller, char* filename,
+static void* THISCALL(rms_controller_hook, void* controller, char* filename,
                                             int drs_id) {
   dbg_print("called hooked rms_controller %s %d\n", filename, drs_id);
   int map_type = get_map_type();
@@ -403,7 +404,7 @@ static void* __thiscall rms_controller_hook(void* controller, char* filename,
   return aoc_rms_controller_constructor(controller, filename, drs_id);
 }
 
-static int __thiscall ai_define_map_symbol_hook(void* ai, char* name) {
+static int THISCALL(ai_define_map_symbol_hook, void* ai, char* name) {
   if (strcmp(name, "SCENARIO-MAP") == 0) {
     int map_type = get_map_type();
     for (int i = 0; i < num_custom_maps; i++) {
@@ -417,7 +418,7 @@ static int __thiscall ai_define_map_symbol_hook(void* ai, char* name) {
   return aoc_ai_define_symbol(ai, name);
 }
 
-static int __thiscall ai_define_map_const_hook(void* ai, char* name,
+static int THISCALL(ai_define_map_const_hook, void* ai, char* name,
                                                int value) {
   for (int i = 0; i < num_custom_maps; i++) {
     dbg_print("defining ai const: %s = %d\n", custom_maps[i].ai_const_name,
