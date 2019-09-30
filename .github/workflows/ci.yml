@@ -23,5 +23,5 @@ jobs:
     steps:
       - uses: actions/checkout@v1
       - run: sudo apt-get install mingw-w64
-      - run: cmake
-      - run: cmake --build
+      - run: cmake -B build -S . -DCMAKE_BUILD_TYPE=Release
+      - run: cmake --build build --verbose
