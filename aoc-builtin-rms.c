@@ -329,7 +329,7 @@ static void replace_terrain_texture(void* texture, int terrain_id, int slp_id) {
             slp_id);
   aoc_texture_destroy(texture);
   char name[100];
-  sprintf(name, "terrain%d.shp", terrain_id);
+  sprintf_s(name, sizeof(name), "terrain%d.shp", terrain_id);
   aoc_texture_create(texture, name, slp_id);
 }
 
@@ -381,7 +381,7 @@ static void* __thiscall rms_controller_hook(void* controller, char* filename,
   dbg_print("map type: %d\n", map_type);
   for (int i = 0; i < num_custom_maps; i++) {
     if (custom_maps[i].id == map_type) {
-      sprintf(map_filename_str, "%s.rms", custom_maps[i].name);
+      sprintf_s(map_filename_str, sizeof(map_filename_str), "%s.rms", custom_maps[i].name);
       filename = map_filename_str;
       drs_id = custom_maps[i].drs_id;
       dbg_print("filename/id is now: %s %d\n", filename, drs_id);
@@ -389,7 +389,7 @@ static void* __thiscall rms_controller_hook(void* controller, char* filename,
       apply_terrain_overrides(&custom_maps[i].terrains);
 
       if (custom_maps[i].scx_drs_id > 0) {
-        sprintf(scx_filename_str, "real_world_%s.scx", custom_maps[i].name);
+        sprintf_s(scx_filename_str, sizeof(scx_filename_str), "real_world_%s.scx", custom_maps[i].name);
         dbg_print("real world map: loading %s %d\n", scx_filename_str,
                   custom_maps[i].scx_drs_id);
         aoc_load_scx(get_world(), scx_filename_str, custom_maps[i].scx_drs_id,
