@@ -16,9 +16,9 @@
   fflush(stdout)
 #endif
 
-static map_section_t* custom_sections = NULL;
+static MapSection* custom_sections = NULL;
 static size_t num_custom_sections = 0;
-static custom_map_t* custom_maps = NULL;
+static CustomMap* custom_maps = NULL;
 static size_t num_custom_maps = 0;
 
 /* offsets for finding data */
@@ -67,7 +67,7 @@ static const size_t offs_text_set_rollover_id = 0x547C20;
 static const size_t offs_text_get_map_value = 0x5086E1;
 typedef int __thiscall (*fn_dropdown_insert_line)(void*, int, int, int);
 typedef int __thiscall (*fn_dropdown_set_line_by_id)(void*, int);
-typedef custom_map_type_t __thiscall (*fn_dropdown_get_id)(void*);
+typedef CustomMapType __thiscall (*fn_dropdown_get_id)(void*);
 typedef int __thiscall (*fn_dropdown_empty_list)(void*);
 typedef int __thiscall (*fn_dropdown_set_sorted)(void*, int);
 typedef int __thiscall (*fn_set_map_type_rollover_ids)(void*);
@@ -142,7 +142,7 @@ static int is_multiplayer() {
   return *(int*)(base_offset + 0x9B2);
 }
 
-static custom_map_type_t get_map_style() {
+static CustomMapType get_map_style() {
   int map_type = get_map_type();
   for (int i = 0; i < num_custom_maps; i++) {
     if (custom_maps[i].id == map_type) {
@@ -263,7 +263,7 @@ static int __thiscall set_map_by_id_hook(void* dd, int id) {
   dbg_print("called set_map_by_id_hook %p %d, map style is %d\n", dd, id,
             get_map_style());
 
-  custom_map_type_t type = get_map_style();
+  CustomMapType type = get_map_style();
   // This works automatically, because this dropdown is populated
   // if the map ID is _not_ any of the real world map IDs or the Custom map ID.
   // Thus, new modded map IDs will have been added to the dropdown already.
@@ -290,7 +290,7 @@ static int __thiscall set_map_by_id_hook(void* dd, int id) {
 
   append_custom_maps(dd, type);
   if (!aoc_dropdown_set_line_by_id(dd, get_map_type())) {
-    map_section_t section = custom_sections[type - CustomSection];
+    MapSection section = custom_sections[type - CustomSection];
     dbg_print("set default map %d\n", section.default_map);
     aoc_dropdown_set_line_by_id(dd, section.default_map);
   }
@@ -303,7 +303,7 @@ static void __thiscall after_map_style_change_hook(void* screen) {
   dbg_print("called after_map_style_change hook %p\n", screen);
 
   void* style_dd = *(void**)((size_t)screen + 0xAF8);
-  custom_map_type_t type = aoc_dropdown_get_id(style_dd);
+  CustomMapType type = aoc_dropdown_get_id(style_dd);
   dbg_print("map style is %d\n", type);
 
   if (type < CustomSection) {
@@ -316,7 +316,7 @@ static void __thiscall after_map_style_change_hook(void* screen) {
   aoc_dropdown_empty_list(map_dd);
   append_custom_maps(map_dd, type);
   if (!aoc_dropdown_set_line_by_id(map_dd, get_map_type())) {
-    map_section_t section = custom_sections[type - CustomSection];
+    MapSection section = custom_sections[type - CustomSection];
     dbg_print("set default map %d\n", section.default_map);
     aoc_dropdown_set_line_by_id(map_dd, section.default_map);
   }
@@ -333,7 +333,7 @@ static void replace_terrain_texture(void* texture, int terrain_id, int slp_id) {
   aoc_texture_create(texture, name, slp_id);
 }
 
-static void apply_terrain_overrides(terrain_overrides_t* overrides) {
+static void apply_terrain_overrides(TerrainOverrides* overrides) {
   void* world = get_world();
   size_t world_offset = (size_t)world;
   void* map = *(void**)(world_offset + offs_map);
@@ -428,9 +428,9 @@ static int __thiscall ai_define_map_const_hook(void* ai, char* name,
 }
 
 hook_t hooks[20];
-void aoc_builtin_rms_init(map_section_t* new_custom_sections,
+void aoc_builtin_rms_init(MapSection* new_custom_sections,
                           size_t new_num_custom_sections,
-                          custom_map_t* new_custom_maps,
+                          CustomMap* new_custom_maps,
                           size_t new_num_custom_maps) {
   dbg_print("init()\n");
 
