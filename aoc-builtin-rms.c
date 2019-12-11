@@ -306,8 +306,9 @@ static void __thiscall after_map_style_change_hook(void* screen) {
   CustomMapType type = aoc_dropdown_get_id(style_dd);
   dbg_print("map style is %d\n", type);
 
+  aoc_set_map_type_rollover_ids(screen);
+
   if (type < CustomSection) {
-    aoc_set_map_type_rollover_ids(screen);
     return;
   }
 
