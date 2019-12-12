@@ -51,17 +51,6 @@ THISCALL_TYPEDEF(fn_rms_controller_constructor, void*, void*, char*, int);
 /* offsets for hooking the builtin random map file list */
 
 static const size_t offs_dropdown_add_line = 0x550870;
-static const size_t offs_dropdown_insert_line = 0x5508D0;
-static const size_t offs_dropdown_set_line_by_id = 0x5507E0;
-static const size_t offs_dropdown_get_id = 0x5509C0;
-static const size_t offs_dropdown_empty_list = 0x550A00;
-static const size_t offs_dropdown_set_sorted = 0x550720;
-static const size_t offs_set_map_type_rollover_ids = 0x5086B0;
-static const size_t offs_text_add_line = 0x5473F0;
-/* location of fn that gets the ID value of a text panel row */
-static const size_t offs_text_get_value = 0x5479D0;
-/* location of fn that sets the hover description for a text panel row */
-static const size_t offs_text_set_rollover_id = 0x547C20;
 /* location of the call to text_get_value that happens when applying rollover
  * description IDs */
 static const size_t offs_text_get_map_value = 0x5086E1;
@@ -76,8 +65,6 @@ THISCALL_TYPEDEF(fn_text_get_value, int, void*, int);
 THISCALL_TYPEDEF(fn_text_set_rollover_id, int, void*, int, int);
 
 /* offsets for defining the AI constants */
-static const size_t offs_ai_define_symbol = 0x5F74F0;
-static const size_t offs_ai_define_const = 0x5F7530;
 static const size_t offs_ai_define_map_symbol = 0x4A27F7;
 static const size_t offs_ai_define_map_const = 0x4A4470;
 THISCALL_TYPEDEF(fn_ai_define_symbol, int, void*, char*);
@@ -85,47 +72,31 @@ THISCALL_TYPEDEF(fn_ai_define_const, int, void*, char*, int);
 
 /* offsets for real world map hooks */
 static const size_t offs_vtbl_map_generate = 0x638114;
-static const size_t offs_map_generate = 0x45EE10;
-static const size_t offs_load_scx = 0x40DF00;
 THISCALL_TYPEDEF(fn_map_generate, int, void*, int, int, char*, void*, int);
 THISCALL_TYPEDEF(fn_load_scx, int, void*, char*, int, void*);
 
 /* offsets for terrain overrides */
-static const size_t offs_texture_create = 0x4DAE00;
-static const size_t offs_texture_destroy = 0x4DB110;
 THISCALL_TYPEDEF(fn_texture_create, void*, void*, char*, int);
 THISCALL_TYPEDEF(fn_texture_destroy, void, void*);
 
-static fn_rms_controller_constructor aoc_rms_controller_constructor =
-    (fn_rms_controller_constructor)offs_rms_controller_constructor;
-static fn_dropdown_insert_line aoc_dropdown_insert_line =
-    (fn_dropdown_insert_line)offs_dropdown_insert_line;
-static fn_dropdown_set_line_by_id aoc_dropdown_set_line_by_id =
-    (fn_dropdown_set_line_by_id)offs_dropdown_set_line_by_id;
-static fn_dropdown_get_id aoc_dropdown_get_id =
-    (fn_dropdown_get_id)offs_dropdown_get_id;
-static fn_dropdown_empty_list aoc_dropdown_empty_list =
-    (fn_dropdown_empty_list)offs_dropdown_empty_list;
-static fn_dropdown_set_sorted aoc_dropdown_set_sorted =
-    (fn_dropdown_set_sorted)offs_dropdown_set_sorted;
-static fn_set_map_type_rollover_ids aoc_set_map_type_rollover_ids =
-    (fn_set_map_type_rollover_ids)offs_set_map_type_rollover_ids;
-static fn_text_add_line aoc_text_add_line =
-    (fn_text_add_line)offs_text_add_line;
-static fn_text_get_value aoc_text_get_value =
-    (fn_text_get_value)offs_text_get_value;
-static fn_text_set_rollover_id aoc_text_set_rollover_id =
-    (fn_text_set_rollover_id)offs_text_set_rollover_id;
-static fn_ai_define_symbol aoc_ai_define_symbol =
-    (fn_ai_define_symbol)offs_ai_define_symbol;
-static fn_ai_define_const aoc_ai_define_const =
-    (fn_ai_define_const)offs_ai_define_const;
-static fn_map_generate aoc_map_generate = (fn_map_generate)offs_map_generate;
-static fn_load_scx aoc_load_scx = (fn_load_scx)offs_load_scx;
-static fn_texture_create aoc_texture_create =
-    (fn_texture_create)offs_texture_create;
-static fn_texture_destroy aoc_texture_destroy =
-    (fn_texture_destroy)offs_texture_destroy;
+static fn_rms_controller_constructor aoc_rms_controller_constructor = (fn_rms_controller_constructor)0x534C40;
+static fn_dropdown_insert_line aoc_dropdown_insert_line = (fn_dropdown_insert_line)0x5508D0;
+static fn_dropdown_set_line_by_id aoc_dropdown_set_line_by_id = (fn_dropdown_set_line_by_id)0x5507E0;
+static fn_dropdown_get_id aoc_dropdown_get_id = (fn_dropdown_get_id)0x5509C0;
+static fn_dropdown_empty_list aoc_dropdown_empty_list = (fn_dropdown_empty_list)0x550A00;
+static fn_dropdown_set_sorted aoc_dropdown_set_sorted = (fn_dropdown_set_sorted)0x550720;
+static fn_set_map_type_rollover_ids aoc_set_map_type_rollover_ids = (fn_set_map_type_rollover_ids)0x5086B0;
+static fn_text_add_line aoc_text_add_line = (fn_text_add_line)0x5473F0;
+/* gets the ID value of a text panel row */
+static fn_text_get_value aoc_text_get_value = (fn_text_get_value)0x5479D0;
+/* sets the hover description for a text panel row */
+static fn_text_set_rollover_id aoc_text_set_rollover_id = (fn_text_set_rollover_id)0x547C20;
+static fn_ai_define_symbol aoc_ai_define_symbol = (fn_ai_define_symbol)0x5F74F0;
+static fn_ai_define_const aoc_ai_define_const = (fn_ai_define_const)0x5F7530;
+static fn_map_generate aoc_map_generate = (fn_map_generate)0x45EE10;
+static fn_load_scx aoc_load_scx = (fn_load_scx)0x40DF00;
+static fn_texture_create aoc_texture_create = (fn_texture_create)0x4DAE00;
+static fn_texture_destroy aoc_texture_destroy = (fn_texture_destroy)0x4DB110;
 
 static int get_map_type() {
   int base_offset = *(int*)offs_game_instance;
