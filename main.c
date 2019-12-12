@@ -13,8 +13,8 @@
 #define dbg_print(...) printf("[aoc-builtin-rms] " __VA_ARGS__)
 #endif
 
-static map_section_t custom_sections[100] = {{0}};
-static custom_map_t custom_maps[255] = {{0}};
+static MapSection custom_sections[100] = {{0}};
+static CustomMap custom_maps[255] = {{0}};
 
 /**
  * Count the number of custom sections.
@@ -36,7 +36,7 @@ static size_t count_custom_maps() {
   return i;
 }
 
-typedef enum parse_map_result {
+typedef enum ParseMapResult {
   MapOk,
   NoId,
   NoName,
@@ -44,10 +44,10 @@ typedef enum parse_map_result {
   NoDrsId,
   TooBigId,
   TooBigTerrain
-} parse_map_result_t;
+} ParseMapResult;
 
-static parse_map_result_t
-parse_map_terrain_overrides(const char* source, terrain_overrides_t* out) {
+static ParseMapResult
+parse_map_terrain_overrides(const char* source, TerrainOverrides* out) {
   const char* read_ptr = source;
   const char* end_ptr = strchr(source, '\0');
 
@@ -73,15 +73,15 @@ parse_map_terrain_overrides(const char* source, terrain_overrides_t* out) {
 /**
  * Parse a <map /> XML element.
  */
-static parse_map_result_t parse_map(ezxml_t node, custom_map_type_t type) {
-  custom_map_t map = {.id = 0,
-                      .name = NULL,
-                      .string = -1,
-                      .description = -1,
-                      .ai_const_name = NULL,
-                      .ai_symbol_name = NULL,
-                      .type = type,
-                      .scx_drs_id = -1};
+static ParseMapResult parse_map(ezxml_t node, CustomMapType type) {
+  CustomMap map = {.id = 0,
+                   .name = NULL,
+                   .string = -1,
+                   .description = -1,
+                   .ai_const_name = NULL,
+                   .ai_symbol_name = NULL,
+                   .type = type,
+                   .scx_drs_id = -1};
   for (int i = 0; i < 50; i++) {
     map.terrains.terrains[i] = -1;
   }
@@ -173,7 +173,7 @@ static parse_map_result_t parse_map(ezxml_t node, custom_map_type_t type) {
   printf("[aoc-builtin-rms] Add modded map: %s\n", map.name);
   size_t i = count_custom_maps();
   custom_maps[i] = map;
-  custom_maps[i + 1] = (custom_map_t){0};
+  custom_maps[i + 1] = (CustomMap){0};
   return MapOk;
 }
 
@@ -184,7 +184,7 @@ typedef enum parse_section_result {
 } parse_section_result_t;
 static parse_section_result_t parse_section(ezxml_t node) {
   const char* tag_name = ezxml_name(node);
-  custom_map_type_t type = CustomSection;
+  CustomMapType type = CustomSection;
   dbg_print("found section tag: %s\n", tag_name);
   if (strcmp(tag_name, "standard") == 0) {
     type = Standard;
@@ -230,7 +230,7 @@ static parse_section_result_t parse_section(ezxml_t node) {
 
   for (ezxml_t map = ezxml_child(node, "map"); map != NULL;
        map = ezxml_next(map)) {
-    parse_map_result_t err = parse_map(map, type);
+    ParseMapResult err = parse_map(map, type);
     switch (err) {
     case NoId:
       MessageBoxA(NULL, "A <map /> is missing an id attribute", NULL, 0);

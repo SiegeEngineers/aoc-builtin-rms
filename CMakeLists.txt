@@ -39,7 +39,8 @@ add_library(aoc-builtin-rms SHARED ${SOURCE_FILES})
 if (UNIX)
   set_target_properties(aoc-builtin-rms PROPERTIES
       PREFIX ""
-      SUFFIX ".dll")
+      SUFFIX ".dll"
+      POSITION_INDEPENDENT_CODE OFF)
 endif()
 install(TARGETS aoc-builtin-rms
         LIBRARY DESTINATION lib)
