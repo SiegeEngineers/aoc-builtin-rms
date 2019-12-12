@@ -10,7 +10,7 @@
 #define THISCALL_TYPEDEF(Name, ReturnType, ThisArg, ...)                       \
   typedef ReturnType (__fastcall *Name)(ThisArg, void*, ##__VA_ARGS__)
 #define THISCALL(Name, ThisArg, ...)                                           \
-  __fastcall Name(ThisArg, void*, ##__VA_ARGS__)
+  __fastcall Name(ThisArg, void* THISCALL_DUMMY_DONOTUSE, ##__VA_ARGS__)
 #define THISCALL_CALL(Name, ThisArg, ...)                                      \
   Name(ThisArg, NULL, ##__VA_ARGS__)
 
