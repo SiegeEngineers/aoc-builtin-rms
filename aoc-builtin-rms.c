@@ -138,7 +138,7 @@ static char is_last_real_world_dropdown_entry(int label, int value) {
   return label == 13553 && value == 43; /* Byzantium */
 }
 
-static void THISCALL(append_custom_maps, void* dd, int type) {
+static void append_custom_maps(void* dd, int type) {
   dbg_print("append custom maps of type %d\n", type);
   void* text_panel = *(void**)((size_t)dd + 256);
   if (text_panel == NULL) {
@@ -203,7 +203,7 @@ static int THISCALL(text_get_map_value_hook, void* tt, int line_index) {
   return selected_map_id;
 }
 
-static void THISCALL(append_default_real_world_maps, void* dd) {
+static void append_default_real_world_maps(void* dd) {
   void* text_panel = *(void**)((size_t)dd + 256);
   if (text_panel == NULL) {
     return;
@@ -294,7 +294,7 @@ static void THISCALL(after_map_style_change_hook, void* screen) {
   }
 }
 
-static void THISCALL(replace_terrain_texture, void* texture, int terrain_id, int slp_id) {
+static void replace_terrain_texture(void* texture, int terrain_id, int slp_id) {
   // Replace a terrain texture in-place by calling destructor, then constructor
   // with the new SLP ID.
   dbg_print("Replacing texture for terrain #%d by SLP %d\n", terrain_id,
