@@ -46,8 +46,7 @@ static const size_t offs_terrain_texture = 0x20;
 static const size_t offs_rms_controller = 0x45F717;
 /* location of the controller constructor */
 static const size_t offs_rms_controller_constructor = 0x534C40;
-typedef void* THISCALL((*fn_rms_load_scx), void*, char*, int, void*);
-typedef void* THISCALL((*fn_rms_controller_constructor), void*, char*, int);
+THISCALL_TYPEDEF(fn_rms_controller_constructor, void*, void*, char*, int);
 
 /* offsets for hooking the builtin random map file list */
 
@@ -66,36 +65,36 @@ static const size_t offs_text_set_rollover_id = 0x547C20;
 /* location of the call to text_get_value that happens when applying rollover
  * description IDs */
 static const size_t offs_text_get_map_value = 0x5086E1;
-typedef int THISCALL((*fn_dropdown_insert_line), void*, int, int, int);
-typedef int THISCALL((*fn_dropdown_set_line_by_id), void*, int);
-typedef CustomMapType THISCALL((*fn_dropdown_get_id), void*);
-typedef int THISCALL((*fn_dropdown_empty_list), void*);
-typedef int THISCALL((*fn_dropdown_set_sorted), void*, int);
-typedef int THISCALL((*fn_set_map_type_rollover_ids), void*);
-typedef int THISCALL((*fn_text_add_line), void*, int, int);
-typedef int THISCALL((*fn_text_get_value), void*, int);
-typedef int THISCALL((*fn_text_set_rollover_id), void*, int, int);
+THISCALL_TYPEDEF(fn_dropdown_insert_line, int, void*, int, int, int);
+THISCALL_TYPEDEF(fn_dropdown_set_line_by_id, int, void*, int);
+THISCALL_TYPEDEF(fn_dropdown_get_id, CustomMapType, void*);
+THISCALL_TYPEDEF(fn_dropdown_empty_list, int, void*);
+THISCALL_TYPEDEF(fn_dropdown_set_sorted, int, void*, int);
+THISCALL_TYPEDEF(fn_set_map_type_rollover_ids, int, void*);
+THISCALL_TYPEDEF(fn_text_add_line, int, void*, int, int);
+THISCALL_TYPEDEF(fn_text_get_value, int, void*, int);
+THISCALL_TYPEDEF(fn_text_set_rollover_id, int, void*, int, int);
 
 /* offsets for defining the AI constants */
 static const size_t offs_ai_define_symbol = 0x5F74F0;
 static const size_t offs_ai_define_const = 0x5F7530;
 static const size_t offs_ai_define_map_symbol = 0x4A27F7;
 static const size_t offs_ai_define_map_const = 0x4A4470;
-typedef int THISCALL((*fn_ai_define_symbol), void*, char*);
-typedef int THISCALL((*fn_ai_define_const), void*, char*, int);
+THISCALL_TYPEDEF(fn_ai_define_symbol, int, void*, char*);
+THISCALL_TYPEDEF(fn_ai_define_const, int, void*, char*, int);
 
 /* offsets for real world map hooks */
 static const size_t offs_vtbl_map_generate = 0x638114;
 static const size_t offs_map_generate = 0x45EE10;
 static const size_t offs_load_scx = 0x40DF00;
-typedef int THISCALL((*fn_map_generate), void*, int, int, char*, void*, int);
-typedef int THISCALL((*fn_load_scx), void*, char*, int, void*);
+THISCALL_TYPEDEF(fn_map_generate, int, void*, int, int, char*, void*, int);
+THISCALL_TYPEDEF(fn_load_scx, int, void*, char*, int, void*);
 
 /* offsets for terrain overrides */
 static const size_t offs_texture_create = 0x4DAE00;
 static const size_t offs_texture_destroy = 0x4DB110;
-typedef void* THISCALL((*fn_texture_create), void*, char*, int);
-typedef void THISCALL((*fn_texture_destroy), void*);
+THISCALL_TYPEDEF(fn_texture_create, void*, void*, char*, int);
+THISCALL_TYPEDEF(fn_texture_destroy, void, void*);
 
 static fn_rms_controller_constructor aoc_rms_controller_constructor =
     (fn_rms_controller_constructor)offs_rms_controller_constructor;
@@ -178,7 +177,7 @@ static void THISCALL(append_custom_maps, void* dd, int type) {
   for (int i = 0; i < num_custom_maps; i++) {
     if (custom_maps[i].type != type)
       continue;
-    aoc_text_add_line(text_panel, custom_maps[i].string, custom_maps[i].id);
+    THISCALL_CALL(aoc_text_add_line, text_panel, custom_maps[i].string, custom_maps[i].id);
   }
 }
 
@@ -205,11 +204,11 @@ static void THISCALL(dropdown_add_line_hook, void* dd, int label, int value) {
   }
 
   // Original
-  aoc_text_add_line(text_panel, label, value);
+  THISCALL_CALL(aoc_text_add_line, text_panel, label, value);
 
   if (additional_type == -CustomSection) {
     for (int i = 0; i < num_custom_sections; i++) {
-      aoc_text_add_line(text_panel, custom_sections[i].name, CustomSection + i);
+      THISCALL_CALL(aoc_text_add_line, text_panel, custom_sections[i].name, CustomSection + i);
     }
   } else if (additional_type >= 0) {
     append_custom_maps(dd, additional_type);
@@ -218,13 +217,13 @@ static void THISCALL(dropdown_add_line_hook, void* dd, int label, int value) {
 
 static int THISCALL(text_get_map_value_hook, void* tt, int line_index) {
   dbg_print("called hooked text_get_map_value %p %d\n", tt, line_index);
-  int selected_map_id = aoc_text_get_value(tt, line_index);
+  int selected_map_id = THISCALL_CALL(aoc_text_get_value, tt, line_index);
 
   for (int i = 0; i < num_custom_maps; i++) {
     if (custom_maps[i].id != selected_map_id)
       continue;
     if (custom_maps[i].description != -1) {
-      aoc_text_set_rollover_id(tt, line_index, custom_maps[i].description);
+      THISCALL_CALL(aoc_text_set_rollover_id, tt, line_index, custom_maps[i].description);
       return 0; /* doesn't have a hardcoded ID so we won't call
                    set_rollover_id twice */
     }
@@ -239,23 +238,23 @@ static void THISCALL(append_default_real_world_maps, void* dd) {
     return;
   }
 
-  aoc_dropdown_set_sorted(dd, 1);
-  aoc_text_add_line(text_panel, 13544, 34);
-  aoc_text_add_line(text_panel, 13545, 35);
-  aoc_text_add_line(text_panel, 13546, 36);
-  aoc_text_add_line(text_panel, 13547, 37);
-  aoc_text_add_line(text_panel, 13548, 38);
-  aoc_text_add_line(text_panel, 13549, 39);
-  aoc_text_add_line(text_panel, 13550, 40);
-  aoc_text_add_line(text_panel, 13551, 41);
-  aoc_text_add_line(text_panel, 13552, 42);
-  aoc_text_add_line(text_panel, 13553, 43);
+  THISCALL_CALL(aoc_dropdown_set_sorted, dd, 1);
+  THISCALL_CALL(aoc_text_add_line, text_panel, 13544, 34);
+  THISCALL_CALL(aoc_text_add_line, text_panel, 13545, 35);
+  THISCALL_CALL(aoc_text_add_line, text_panel, 13546, 36);
+  THISCALL_CALL(aoc_text_add_line, text_panel, 13547, 37);
+  THISCALL_CALL(aoc_text_add_line, text_panel, 13548, 38);
+  THISCALL_CALL(aoc_text_add_line, text_panel, 13549, 39);
+  THISCALL_CALL(aoc_text_add_line, text_panel, 13550, 40);
+  THISCALL_CALL(aoc_text_add_line, text_panel, 13551, 41);
+  THISCALL_CALL(aoc_text_add_line, text_panel, 13552, 42);
+  THISCALL_CALL(aoc_text_add_line, text_panel, 13553, 43);
   append_custom_maps(dd, RealWorld);
 
-  aoc_dropdown_set_sorted(dd, 0);
-  aoc_dropdown_insert_line(dd, 0, 10890, 47);
+  THISCALL_CALL(aoc_dropdown_set_sorted, dd, 0);
+  THISCALL_CALL(aoc_dropdown_insert_line, dd, 0, 10890, 47);
 
-  aoc_dropdown_set_sorted(dd, 0);
+  THISCALL_CALL(aoc_dropdown_set_sorted, dd, 0);
 }
 
 // Called when the current map type is set "externally", eg
@@ -269,7 +268,7 @@ static int THISCALL(set_map_by_id_hook, void* dd, int id) {
   // if the map ID is _not_ any of the real world map IDs or the Custom map ID.
   // Thus, new modded map IDs will have been added to the dropdown already.
   if (type == Standard) {
-    return aoc_dropdown_set_line_by_id(dd, id);
+    return THISCALL_CALL(aoc_dropdown_set_line_by_id, dd, id);
   }
 
   // For other map IDs, the dropdown currently contains a list of Standard type
@@ -279,10 +278,10 @@ static int THISCALL(set_map_by_id_hook, void* dd, int id) {
   // (`dd` contains a pointer to the game setup screen at 0x40)
   void* screen = *(void**)((size_t)dd + 0x40);
   void* style_dd = *(void**)((size_t)screen + 0xAF8);
-  aoc_dropdown_set_line_by_id(style_dd, type);
+  THISCALL_CALL(aoc_dropdown_set_line_by_id, style_dd, type);
 
   // Clear the list and insert our correct map types.
-  aoc_dropdown_empty_list(dd);
+  THISCALL_CALL(aoc_dropdown_empty_list, dd);
 
   // (unfortunately need to hardcode this)
   if (type == RealWorld) {
@@ -290,10 +289,10 @@ static int THISCALL(set_map_by_id_hook, void* dd, int id) {
   }
 
   append_custom_maps(dd, type);
-  if (!aoc_dropdown_set_line_by_id(dd, get_map_type())) {
+  if (!THISCALL_CALL(aoc_dropdown_set_line_by_id, dd, get_map_type())) {
     MapSection section = custom_sections[type - CustomSection];
     dbg_print("set default map %d\n", section.default_map);
-    aoc_dropdown_set_line_by_id(dd, section.default_map);
+    THISCALL_CALL(aoc_dropdown_set_line_by_id, dd, section.default_map);
   }
 
   return 1;
@@ -304,10 +303,10 @@ static void THISCALL(after_map_style_change_hook, void* screen) {
   dbg_print("called after_map_style_change hook %p\n", screen);
 
   void* style_dd = *(void**)((size_t)screen + 0xAF8);
-  CustomMapType type = aoc_dropdown_get_id(style_dd);
+  CustomMapType type = THISCALL_CALL(aoc_dropdown_get_id, style_dd);
   dbg_print("map style is %d\n", type);
 
-  aoc_set_map_type_rollover_ids(screen);
+  THISCALL_CALL(aoc_set_map_type_rollover_ids, screen);
 
   if (type < CustomSection) {
     return;
@@ -315,12 +314,12 @@ static void THISCALL(after_map_style_change_hook, void* screen) {
 
   void* map_dd = *(void**)((size_t)screen + 0xB00);
 
-  aoc_dropdown_empty_list(map_dd);
+  THISCALL_CALL(aoc_dropdown_empty_list, map_dd);
   append_custom_maps(map_dd, type);
-  if (!aoc_dropdown_set_line_by_id(map_dd, get_map_type())) {
+  if (!THISCALL_CALL(aoc_dropdown_set_line_by_id, map_dd, get_map_type())) {
     MapSection section = custom_sections[type - CustomSection];
     dbg_print("set default map %d\n", section.default_map);
-    aoc_dropdown_set_line_by_id(map_dd, section.default_map);
+    THISCALL_CALL(aoc_dropdown_set_line_by_id, map_dd, section.default_map);
   }
 }
 
@@ -329,10 +328,10 @@ static void THISCALL(replace_terrain_texture, void* texture, int terrain_id, int
   // with the new SLP ID.
   dbg_print("Replacing texture for terrain #%d by SLP %d\n", terrain_id,
             slp_id);
-  aoc_texture_destroy(texture);
+  THISCALL_CALL(aoc_texture_destroy, texture);
   char name[100];
   sprintf_s(name, sizeof(name), "terrain%d.shp", terrain_id);
-  aoc_texture_create(texture, name, slp_id);
+  THISCALL_CALL(aoc_texture_create, texture, name, slp_id);
 }
 
 static void apply_terrain_overrides(TerrainOverrides* overrides) {
@@ -371,7 +370,7 @@ static void THISCALL(map_generate_hook, void* map, int size_x, int size_y,
   dbg_print("called hooked map_generate %s %p\n", name, game_info);
   /* We need to store this to be able to load the scx file later */
   current_game_info = game_info;
-  aoc_map_generate(map, size_x, size_y, name, game_info, num_players);
+  THISCALL_CALL(aoc_map_generate, map, size_x, size_y, name, game_info, num_players);
 }
 
 static char map_filename_str[MAX_PATH];
@@ -394,7 +393,7 @@ static void* THISCALL(rms_controller_hook, void* controller, char* filename,
         sprintf_s(scx_filename_str, sizeof(scx_filename_str), "real_world_%s.scx", custom_maps[i].name);
         dbg_print("real world map: loading %s %d\n", scx_filename_str,
                   custom_maps[i].scx_drs_id);
-        aoc_load_scx(get_world(), scx_filename_str, custom_maps[i].scx_drs_id,
+        THISCALL_CALL(aoc_load_scx, get_world(), scx_filename_str, custom_maps[i].scx_drs_id,
                      current_game_info);
       }
 
@@ -402,7 +401,7 @@ static void* THISCALL(rms_controller_hook, void* controller, char* filename,
     }
   }
 
-  return aoc_rms_controller_constructor(controller, filename, drs_id);
+  return THISCALL_CALL(aoc_rms_controller_constructor, controller, filename, drs_id);
 }
 
 static int THISCALL(ai_define_map_symbol_hook, void* ai, char* name) {
@@ -416,7 +415,7 @@ static int THISCALL(ai_define_map_symbol_hook, void* ai, char* name) {
       }
     }
   }
-  return aoc_ai_define_symbol(ai, name);
+  return THISCALL_CALL(aoc_ai_define_symbol, ai, name);
 }
 
 static int THISCALL(ai_define_map_const_hook, void* ai, char* name,
@@ -424,9 +423,9 @@ static int THISCALL(ai_define_map_const_hook, void* ai, char* name,
   for (int i = 0; i < num_custom_maps; i++) {
     dbg_print("defining ai const: %s = %d\n", custom_maps[i].ai_const_name,
               custom_maps[i].id);
-    aoc_ai_define_const(ai, custom_maps[i].ai_const_name, custom_maps[i].id);
+    THISCALL_CALL(aoc_ai_define_const, ai, custom_maps[i].ai_const_name, custom_maps[i].id);
   }
-  return aoc_ai_define_const(ai, "scenario-map", -1);
+  return THISCALL_CALL(aoc_ai_define_const, ai, "scenario-map", -1);
 }
 
 hook_t hooks[20];
