@@ -24,7 +24,7 @@ add_definitions(-DWIN32_LEAN_AND_MEAN)
 add_definitions(-DNOMINMAX)
 add_definitions(-DEZXML_NOMMAP)
 add_definitions(-D_CRT_SECURE_NO_WARNINGS)
-if (CMAKE_BUILD_TYPE STREQUAL Debug)
+if (NOT CMAKE_BUILD_TYPE STREQUAL Debug)
   add_definitions(-DNDEBUG)
 endif()
 
