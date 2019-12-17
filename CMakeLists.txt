@@ -34,7 +34,6 @@ set(SOURCE_FILES
   aoc-builtin-rms.c
   hook.c
   main.c
-  main.def
 )
 
 add_library(aoc-builtin-rms SHARED ${SOURCE_FILES})
