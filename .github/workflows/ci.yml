@@ -11,7 +11,9 @@ jobs:
       - name: Build release DLL
         run: cmake --build build --verbose
       - name: Make artifact
-        run: mkdir -p artifact && cp build/Debug/aoc-builtin-rms.dll artifact
+        run: |
+          mkdir -p artifact
+          cp build/Debug/aoc-builtin-rms.dll artifact
       - uses: actions/upload-artifact@master
         with:
           name: aoc-builtin-rms
