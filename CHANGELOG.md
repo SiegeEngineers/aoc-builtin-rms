@@ -4,6 +4,10 @@ All notable changes to this project will be documented in this file.
 
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.6.2
+* Show descriptions for maps in custom sections.
+* Can now be compiled on MSVC.
+
 ## 0.6.1
 * Show descriptions for all custom random maps, fixes [#6](https://github.com/SiegeEngineers/aoc-builtin-rms/issues/6).
 

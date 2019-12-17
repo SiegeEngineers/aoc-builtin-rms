@@ -97,19 +97,18 @@ In this case, I used some random names that already exist:
 
 ## Build
 
-This project can only be built with MinGW GCC compilers at this time.
+This project uses CMake.
 
 To create a debug build (with some logging):
 
 ```
-make
+cmake && cmake --build
 ```
 
 To create a release build (smaller and no logging):
 
 ```
-make clean
-env RELEASE=1 make
+cmake -DCMAKE_BUILD_TYPE=Release && cmake --build
 ```
 
 ## License
