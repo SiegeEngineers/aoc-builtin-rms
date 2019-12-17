@@ -16,9 +16,7 @@ if (IPO_SUPPORTED)
   set(CMAKE_INTERPROCEDURAL_OPTIMIZATION TRUE)
 endif()
 
-if (MSVC)
-  add_compile_options(/ignore:4996)
-else()
+if (NOT MSVC)
   add_compile_options(-m32)
   add_compile_options(-Wall)
 endif()
@@ -26,6 +24,9 @@ add_definitions(-DWIN32_LEAN_AND_MEAN)
 add_definitions(-DNOMINMAX)
 add_definitions(-DEZXML_NOMMAP)
 add_definitions(-D_CRT_SECURE_NO_WARNINGS)
+if (NOT CMAKE_BUILD_TYPE STREQUAL Debug)
+  add_definitions(-DNDEBUG)
+endif()
 
 include_directories(include/)
 
@@ -34,7 +35,6 @@ set(SOURCE_FILES
   aoc-builtin-rms.c
   hook.c
   main.c
-  main.def
 )
 
 add_library(aoc-builtin-rms SHARED ${SOURCE_FILES})

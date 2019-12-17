@@ -211,14 +211,14 @@ static parse_section_result_t parse_section(ezxml_t node) {
 
     const char* ai_symbol_prefix = ezxml_attr(node, "aiSymbolPrefix");
     if (ai_symbol_prefix != NULL) {
-      custom_sections[i].ai_symbol_prefix = strdup(ai_symbol_prefix);
+      custom_sections[i].ai_symbol_prefix = _strdup(ai_symbol_prefix);
     } else {
       custom_sections[i].ai_symbol_prefix = NULL;
     }
 
     const char* ai_const_prefix = ezxml_attr(node, "aiConstPrefix");
     if (ai_const_prefix != NULL) {
-      custom_sections[i].ai_const_prefix = strdup(ai_const_prefix);
+      custom_sections[i].ai_const_prefix = _strdup(ai_const_prefix);
     } else {
       custom_sections[i].ai_const_prefix = NULL;
     }
@@ -330,11 +330,13 @@ static char* read_file(char* filename) {
   return config;
 }
 
+__declspec(dllexport)
 void mmm_load(mmm_mod_info* info) {
   info->name = "Custom Builtin RMS";
   info->version = AOC_BUILTIN_RMS_VERSION;
 }
 
+__declspec(dllexport)
 void mmm_after_setup(mmm_mod_info* info) {
   dbg_print("init()\n");
   const char* mod_name = info->meta->mod_short_name;
@@ -369,6 +371,7 @@ void mmm_after_setup(mmm_mod_info* info) {
                        count_custom_maps());
 }
 
+__declspec(dllexport)
 void mmm_unload(mmm_mod_info* info) {
   dbg_print("deinit()\n");
   for (size_t i = 0; custom_maps[i].id; i++) {
