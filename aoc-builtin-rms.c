@@ -115,7 +115,7 @@ static int is_multiplayer() {
 
 static CustomMapType get_map_style() {
   int map_type = get_map_type();
-  for (int i = 0; i < num_custom_maps; i++) {
+  for (size_t i = 0; i < num_custom_maps; i++) {
     if (custom_maps[i].id == map_type) {
       return custom_maps[i].type;
     }
@@ -145,7 +145,7 @@ static void append_custom_maps(void* dd, int type) {
     return;
   }
 
-  for (int i = 0; i < num_custom_maps; i++) {
+  for (size_t i = 0; i < num_custom_maps; i++) {
     if (custom_maps[i].type != type)
       continue;
     THISCALL_CALL(aoc_text_add_line, text_panel, custom_maps[i].string, custom_maps[i].id);
@@ -190,7 +190,7 @@ static int THISCALL(text_get_map_value_hook, void* tt, int line_index) {
   dbg_print("called hooked text_get_map_value %p %d\n", tt, line_index);
   int selected_map_id = THISCALL_CALL(aoc_text_get_value, tt, line_index);
 
-  for (int i = 0; i < num_custom_maps; i++) {
+  for (size_t i = 0; i < num_custom_maps; i++) {
     if (custom_maps[i].id != selected_map_id)
       continue;
     if (custom_maps[i].description != -1) {
@@ -351,7 +351,7 @@ static void* THISCALL(rms_controller_hook, void* controller, char* filename,
   dbg_print("called hooked rms_controller %s %d\n", filename, drs_id);
   int map_type = get_map_type();
   dbg_print("map type: %d\n", map_type);
-  for (int i = 0; i < num_custom_maps; i++) {
+  for (size_t i = 0; i < num_custom_maps; i++) {
     if (custom_maps[i].id == map_type) {
       sprintf_s(map_filename_str, sizeof(map_filename_str), "%s.rms", custom_maps[i].name);
       filename = map_filename_str;
@@ -378,7 +378,7 @@ static void* THISCALL(rms_controller_hook, void* controller, char* filename,
 static int THISCALL(ai_define_map_symbol_hook, void* ai, char* name) {
   if (strcmp(name, "SCENARIO-MAP") == 0) {
     int map_type = get_map_type();
-    for (int i = 0; i < num_custom_maps; i++) {
+    for (size_t i = 0; i < num_custom_maps; i++) {
       if (custom_maps[i].id == map_type) {
         name = custom_maps[i].ai_symbol_name;
         dbg_print("defining ai symbol: %s\n", name);
@@ -391,7 +391,7 @@ static int THISCALL(ai_define_map_symbol_hook, void* ai, char* name) {
 
 static int THISCALL(ai_define_map_const_hook, void* ai, char* name,
                                                int value) {
-  for (int i = 0; i < num_custom_maps; i++) {
+  for (size_t i = 0; i < num_custom_maps; i++) {
     dbg_print("defining ai const: %s = %d\n", custom_maps[i].ai_const_name,
               custom_maps[i].id);
     THISCALL_CALL(aoc_ai_define_const, ai, custom_maps[i].ai_const_name, custom_maps[i].id);
@@ -444,7 +444,7 @@ void aoc_builtin_rms_init(MapSection* new_custom_sections,
 void deinit() {
   dbg_print("deinit()\n");
 
-  for (int h = 0; hooks[h] != NULL; h++) {
+  for (size_t h = 0; hooks[h] != NULL; h++) {
     revert_hook(hooks[h]);
   }
 
