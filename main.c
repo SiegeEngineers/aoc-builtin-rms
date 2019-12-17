@@ -211,14 +211,14 @@ static parse_section_result_t parse_section(ezxml_t node) {
 
     const char* ai_symbol_prefix = ezxml_attr(node, "aiSymbolPrefix");
     if (ai_symbol_prefix != NULL) {
-      custom_sections[i].ai_symbol_prefix = strdup(ai_symbol_prefix);
+      custom_sections[i].ai_symbol_prefix = _strdup(ai_symbol_prefix);
     } else {
       custom_sections[i].ai_symbol_prefix = NULL;
     }
 
     const char* ai_const_prefix = ezxml_attr(node, "aiConstPrefix");
     if (ai_const_prefix != NULL) {
-      custom_sections[i].ai_const_prefix = strdup(ai_const_prefix);
+      custom_sections[i].ai_const_prefix = _strdup(ai_const_prefix);
     } else {
       custom_sections[i].ai_const_prefix = NULL;
     }
