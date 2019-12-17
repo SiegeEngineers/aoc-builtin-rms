@@ -178,7 +178,7 @@ static void THISCALL(dropdown_add_line_hook, void* dd, int label, int value) {
   THISCALL_CALL(aoc_text_add_line, text_panel, label, value);
 
   if (additional_type == -CustomSection) {
-    for (int i = 0; i < num_custom_sections; i++) {
+    for (size_t i = 0; i < num_custom_sections; i++) {
       THISCALL_CALL(aoc_text_add_line, text_panel, custom_sections[i].name, CustomSection + i);
     }
   } else if (additional_type >= 0) {
