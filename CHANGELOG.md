@@ -4,6 +4,9 @@ All notable changes to this project will be documented in this file.
 
 This project adheres to [Semantic Versioning](http://semver.org/).
 
+## 0.6.3
+* Reset terrain overrides before each new game, to prevent overrides from one map carrying over to another.
+
 ## 0.6.2
 * Show descriptions for maps in custom sections.
 * Can now be compiled on MSVC.
