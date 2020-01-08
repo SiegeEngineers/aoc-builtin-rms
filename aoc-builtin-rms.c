@@ -8,6 +8,7 @@
 #define TERRAIN_TEXTURE_BASE 15000
 #define TERRAIN_TEXTURE_MAX 15050
 #define MAX_PATH 260
+#define NUM_TERRAINS 42
 
 #ifdef NDEBUG
 #define dbg_print(...)
@@ -126,6 +127,12 @@ static CustomMapType get_map_style() {
 static void* get_world() {
   int base_offset = *(int*)offs_game_instance;
   return *(void**)(base_offset + offs_world);
+}
+
+static void* get_map() {
+  void* world = get_world();
+  size_t world_offset = (size_t)world;
+  return *(void**)(world_offset + offs_map);
 }
 
 static char is_last_type_dropdown_entry(int label, int value) {
@@ -305,15 +312,15 @@ static void replace_terrain_texture(void* texture, int terrain_id, int slp_id) {
   THISCALL_CALL(aoc_texture_create, texture, name, slp_id);
 }
 
+static int revert_terrain_ids[NUM_TERRAINS] = {-1};
 static void apply_terrain_overrides(TerrainOverrides* overrides) {
-  void* world = get_world();
-  size_t world_offset = (size_t)world;
-  void* map = *(void**)(world_offset + offs_map);
-  size_t map_offset = (size_t)map;
-  for (int i = 0; i < 42; i++) {
+  size_t map_offset = (size_t)get_map();
+  for (int i = 0; i < NUM_TERRAINS; i++) {
     size_t terrain_offset =
         map_offset + offs_terrains + (sizeof_terrain_struct * i);
     int* texture_id = (int*)(terrain_offset + offs_terrain_texture_id);
+    // remember the texture ID so it can be reverted
+    revert_terrain_ids[i] = *texture_id;
     void* texture = *(void**)(terrain_offset + offs_terrain_texture);
     if (*texture_id < TERRAIN_TEXTURE_BASE ||
         *texture_id >= TERRAIN_TEXTURE_MAX)
@@ -331,6 +338,24 @@ static void apply_terrain_overrides(TerrainOverrides* overrides) {
       *texture_id = new_texture_id;
       replace_terrain_texture(texture, i, new_texture_id);
     }
+  }
+}
+
+static void revert_terrain_overrides() {
+  // no terrain IDs yet
+  if (revert_terrain_ids[0] == -1) {
+    return;
+  }
+
+  size_t map_offset = (size_t)get_map();
+  for (int i = 0; i < NUM_TERRAINS; i++) {
+    dbg_print("Revert terrain %d to texture %d\n", i, revert_terrain_ids[i]);
+    size_t terrain_offset =
+        map_offset + offs_terrains + (sizeof_terrain_struct * i);
+    int* texture_id = (int*)(terrain_offset + offs_terrain_texture_id);
+    void* texture = *(void**)(terrain_offset + offs_terrain_texture);
+    *texture_id = revert_terrain_ids[i];
+    replace_terrain_texture(texture, i, revert_terrain_ids[i]);
   }
 }
 
@@ -358,6 +383,7 @@ static void* THISCALL(rms_controller_hook, void* controller, char* filename,
       drs_id = custom_maps[i].drs_id;
       dbg_print("filename/id is now: %s %d\n", filename, drs_id);
 
+      revert_terrain_overrides();
       apply_terrain_overrides(&custom_maps[i].terrains);
 
       if (custom_maps[i].scx_drs_id > 0) {
